@@ -1,3 +1,5 @@
+<a href="https://mateusfb-ai.vercel.app"><img src=".github/brand/banner.svg" alt="mateusfb.ai — cove" width="100%"></a>
+
 # Cove
 
 **A Dynamic Island for the Mac notch — 100% Swift/SwiftUI, no Electron, no subscriptions.**
@@ -131,3 +133,7 @@ Inspired by Alcove, Droppy and NotchNook. Techniques borrowed with thanks from t
 ## License
 
 [MIT](LICENSE)
+
+---
+
+<p align="center"><a href="https://mateusfb-ai.vercel.app"><img src=".github/brand/mark.svg" width="20" alt=""></a><br><sub>Built in public at <a href="https://mateusfb-ai.vercel.app">mateusfb.ai</a></sub></p>
