@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleIdentifier</key>
+	<string>app.cove.notch</string>
+	<key>CFBundleName</key>
+	<string>Cove</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.6.5</string>
+	<key>CFBundleVersion</key>
+	<string>0.6.5</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Controlar Music/Spotify (shuffle, repetir, favoritar) e responder mensagens pelo Mensagens.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Cove mostra conexão e bateria dos seus dispositivos Bluetooth na ilha.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Cove mostra seus próximos eventos na ilha.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Cove usa a câmera para cadastrar e reconhecer seu rosto na ilha (desbloqueio por rosto, opcional).</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Cove grava memos de voz pela ilha.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Cove cria lembretes pela busca da ilha.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Cove transcreve seus memos no próprio Mac.</string>
+	<key>SUFeedURL</key>
+	<string>https://github.com/cove-app/cove/releases/latest/download/appcast.xml</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
+</dict>
+</plist>

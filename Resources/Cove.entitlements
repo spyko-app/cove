@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- hardened runtime (--options runtime) nega câmera e microfone em SILÊNCIO sem estas duas -->
+	<key>com.apple.security.device.camera</key>
+	<true/>
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+	<!-- caminho A do cofre (data-protection keychain + biometria). Só entra se o
+	     spike (b) devolver "A"; exige perfil Developer ID embarcado (TN3137).
+	     ATENÇÃO: `codesign --entitlements` (make-app.sh:141) NÃO expande variáveis
+	     do Xcode — "$(AppIdentifierPrefix)" iria como string literal e o grupo não
+	     bateria com o perfil. Escrever o Team ID LITERAL (Passo 3b). -->
+	<!--
+	<key>keychain-access-groups</key>
+	<array>
+		<string>TEAMID.app.cove.notch</string>
+	</array>
+	-->
+</dict>
+</plist>
