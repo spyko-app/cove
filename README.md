@@ -2,6 +2,12 @@
 
 **A Dynamic Island for the Mac notch — 100% Swift/SwiftUI, no Electron, no subscriptions.**
 
+<p align="center">
+  <a href="https://github.com/spyko-app/cove/releases/download/v0.6.5/Cove-0.6.5.dmg"><img src="https://img.shields.io/badge/Download-Cove_0.6.5_.dmg-0a84ff?style=for-the-badge&logo=apple&logoColor=white" alt="Download Cove 0.6.5 DMG"></a>
+  &nbsp;
+  <a href="https://github.com/spyko-app/cove/releases"><img src="https://img.shields.io/github/v/release/spyko-app/cove?style=for-the-badge&label=Latest&color=333" alt="Latest release"></a>
+</p>
+
 Cove turns the notch (or the top-center of any external display) into a live island: now-playing with real controls, system HUDs (volume, brightness, battery, Bluetooth, Focus, lock), a file shelf, clipboard history, timers, a search bar, and a set of "droplet" pages you can open from the island.
 
 <p align="center">
@@ -45,7 +51,15 @@ Everything is written in Swift 5.10 / SwiftUI with AppKit where needed. No web v
 
 ## Install
 
-### Build from source
+### Option A — download the app (recommended)
+
+1. Click the **Download** button above (or grab `Cove-0.6.5.dmg` from the [Releases](https://github.com/spyko-app/cove/releases) page).
+2. Open the DMG and drag **Cove** onto the **Applications** shortcut.
+3. Open **Applications → Cove**. The build is signed ad-hoc (not notarized yet), so macOS will refuse the double-click the first time: **right-click → Open → Open**. This is needed only once.
+4. Cove appears as an island at the top of the screen (menu-bar app, no Dock icon). Hover it to expand.
+5. Enable **Cove → Settings → General → Open at login** if you want it always on.
+
+### Option B — build from source
 
 ```bash
 git clone https://github.com/spyko-app/cove.git
