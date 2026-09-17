@@ -27,8 +27,6 @@ extension ScreenCapture.Mode: Codable {
     }
 }
 
-/// Fatia do Ring: droplet, ação embutida, app ou Atalho da Shortcuts. Persistida
-/// em `NotchConfig.ringActions` via representação com tag (`type`/`value`), legível no JSON.
 enum RingAction: Codable, Equatable, Identifiable {
     case droplet(Droplet)
     case capture(ScreenCapture.Mode?)
@@ -86,7 +84,6 @@ enum RingAction: Codable, Equatable, Identifiable {
         }
     }
 
-    /// Verdadeiro se o alvo (app instalado) some — o Ring nunca deve travar nele, só avisar.
     var isMissing: Bool {
         if case .app(let bundleID) = self {
             return NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) == nil
@@ -98,8 +95,6 @@ enum RingAction: Codable, Equatable, Identifiable {
         .capture(nil), .ocr, .droplet(.clipboard), .droplet(.shelf), .pomodoro, .highAlert,
     ]
 
-    /// Dedupe (mantém a 1ª ocorrência) e clampa entre 2 e 8 fatias — some
-    /// abaixo do mínimo cai nos padrões, acima do máximo trunca.
     static func normalize(_ actions: [RingAction]) -> [RingAction] {
         var seen = Set<String>()
         var out: [RingAction] = []
@@ -164,8 +159,6 @@ enum RingAction: Codable, Equatable, Identifiable {
     }
 }
 
-/// Decode tolerante de `[RingAction]`: tipo desconhecido ou payload quebrado
-/// vira `nil` e é descartado, nunca derruba a lista inteira.
 enum RingActionListCoding {
     private struct AnyDecodableBox: Decodable {
         let action: RingAction?
@@ -177,9 +170,6 @@ enum RingActionListCoding {
     static func decode(_ container: inout UnkeyedDecodingContainer) throws -> [RingAction] {
         var out: [RingAction] = []
         while !container.isAtEnd {
-            // `AnyDecodableBox` nunca lança (engole o erro em `try?` no próprio
-            // init), então o índice do container sempre avança 1 por elemento —
-            // um `else`/skip aqui consumiria o elemento seguinte por engano.
             if let box = try? container.decode(AnyDecodableBox.self), let action = box.action {
                 out.append(action)
             }
@@ -189,8 +179,6 @@ enum RingActionListCoding {
 }
 
 extension RingAction {
-    /// Decode tolerante de uma lista de fatias a partir de JSON bruto: usado
-    /// pelos testes e por qualquer leitor externo de `ringActions` fora do `NotchConfig`.
     static func decodeTolerantList(_ data: Data) throws -> [RingAction] {
         struct Wrapper: Decodable {
             let items: [RingAction]

@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Linha de letra atual, no lugar do nome do artista no card expandido.
-/// Interpola o `elapsed` a partir de `lastElapsedUpdate` pra achar a linha certa
-/// sem precisar de um novo tick de MediaRemote a cada segundo.
 struct CurrentLyricLine: View {
     @ObservedObject var media: MediaRemoteService
     @ObservedObject var lyrics: LyricsService

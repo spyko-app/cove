@@ -1,6 +1,5 @@
 import Foundation
 
-/// Um emoji do catálogo local — nome/keywords em pt-BR (+ en), agrupado por categoria.
 struct Emoji: Identifiable, Equatable {
     var id: String { char }
     let char: String
@@ -9,11 +8,8 @@ struct Emoji: Identifiable, Equatable {
     let group: String
 }
 
-/// ~300 emoji comuns, cobrindo Smileys, Gestos, Corações, Animais, Comida,
-/// Objetos, Símbolos e Bandeiras (BR/US/PT) — dados locais, sem rede (T26).
 enum EmojiCatalog {
     static let all: [Emoji] = [
-        // MARK: Smileys
         Emoji(char: "😀", name: "rosto sorrindo", keywords: ["feliz", "sorriso", "happy", "smile", "grinning"], group: "Smileys"),
         Emoji(char: "😃", name: "rosto sorrindo com olhos abertos", keywords: ["feliz", "alegre", "happy", "smiley"], group: "Smileys"),
         Emoji(char: "😄", name: "rosto sorrindo com olhos fechados", keywords: ["feliz", "risada", "laugh", "happy"], group: "Smileys"),
@@ -117,7 +113,6 @@ enum EmojiCatalog {
         Emoji(char: "😹", name: "gato rindo até chorar", keywords: ["gato", "cat", "risada"], group: "Smileys"),
         Emoji(char: "😻", name: "gato com olhos de coração", keywords: ["gato", "cat", "amor"], group: "Smileys"),
 
-        // MARK: Gestos
         Emoji(char: "👍", name: "joinha", keywords: ["joinha", "positivo", "thumbs up", "curtir", "ok"], group: "Gestos"),
         Emoji(char: "👎", name: "joinha negativo", keywords: ["negativo", "thumbs down", "não curti"], group: "Gestos"),
         Emoji(char: "👌", name: "sinal de ok", keywords: ["ok", "perfeito", "beleza"], group: "Gestos"),
@@ -148,7 +143,6 @@ enum EmojiCatalog {
         Emoji(char: "🦾", name: "braço mecânico", keywords: ["prótese", "robótico"], group: "Gestos"),
         Emoji(char: "🧠", name: "cérebro", keywords: ["brain", "inteligência", "pensar"], group: "Gestos"),
 
-        // MARK: Corações
         Emoji(char: "❤️", name: "coração vermelho", keywords: ["amor", "coracao", "coração", "love", "heart"], group: "Corações"),
         Emoji(char: "🧡", name: "coração laranja", keywords: ["coração", "coracao", "orange heart"], group: "Corações"),
         Emoji(char: "💛", name: "coração amarelo", keywords: ["coração", "coracao", "yellow heart", "amizade"], group: "Corações"),
@@ -169,7 +163,6 @@ enum EmojiCatalog {
         Emoji(char: "💝", name: "coração com laço", keywords: ["presente", "heart with ribbon"], group: "Corações"),
         Emoji(char: "💟", name: "decoração de coração", keywords: ["heart decoration"], group: "Corações"),
 
-        // MARK: Animais
         Emoji(char: "🐶", name: "rosto de cachorro", keywords: ["cachorro", "dog", "cão", "pet"], group: "Animais"),
         Emoji(char: "🐱", name: "rosto de gato", keywords: ["gato", "cat", "felino"], group: "Animais"),
         Emoji(char: "🐭", name: "rosto de rato", keywords: ["rato", "mouse", "camundongo"], group: "Animais"),
@@ -203,7 +196,6 @@ enum EmojiCatalog {
         Emoji(char: "🐳", name: "baleia", keywords: ["baleia", "whale"], group: "Animais"),
         Emoji(char: "🐟", name: "peixe", keywords: ["peixe", "fish"], group: "Animais"),
 
-        // MARK: Comida
         Emoji(char: "🍎", name: "maçã vermelha", keywords: ["maçã", "maca", "apple", "fruta"], group: "Comida"),
         Emoji(char: "🍌", name: "banana", keywords: ["banana"], group: "Comida"),
         Emoji(char: "🍇", name: "uvas", keywords: ["uva", "grape"], group: "Comida"),
@@ -237,7 +229,6 @@ enum EmojiCatalog {
         Emoji(char: "🍷", name: "taça de vinho", keywords: ["vinho", "wine"], group: "Comida"),
         Emoji(char: "🥤", name: "copo com canudo", keywords: ["refrigerante", "bebida", "drink"], group: "Comida"),
 
-        // MARK: Objetos
         Emoji(char: "📱", name: "celular", keywords: ["celular", "phone", "smartphone"], group: "Objetos"),
         Emoji(char: "💻", name: "laptop", keywords: ["computador", "laptop", "notebook"], group: "Objetos"),
         Emoji(char: "⌨️", name: "teclado", keywords: ["teclado", "keyboard"], group: "Objetos"),
@@ -279,7 +270,6 @@ enum EmojiCatalog {
         Emoji(char: "⏰", name: "despertador", keywords: ["despertador", "alarm", "hora"], group: "Objetos"),
         Emoji(char: "📅", name: "calendário", keywords: ["calendário", "calendario", "calendar", "data"], group: "Objetos"),
 
-        // MARK: Símbolos
         Emoji(char: "✅", name: "marca de verificação", keywords: ["check", "certo", "feito", "ok"], group: "Símbolos"),
         Emoji(char: "❌", name: "marca x", keywords: ["errado", "cancel", "x", "não"], group: "Símbolos"),
         Emoji(char: "⚠️", name: "aviso", keywords: ["atenção", "warning", "cuidado", "alerta"], group: "Símbolos"),
@@ -300,7 +290,6 @@ enum EmojiCatalog {
         Emoji(char: "🔁", name: "repetir", keywords: ["repetir", "repeat", "loop"], group: "Símbolos"),
         Emoji(char: "🔀", name: "embaralhar", keywords: ["shuffle", "aleatório", "misturar"], group: "Símbolos"),
 
-        // MARK: Bandeiras
         Emoji(char: "🇧🇷", name: "bandeira do Brasil", keywords: ["brasil", "brazil", "bandeira"], group: "Bandeiras"),
         Emoji(char: "🇺🇸", name: "bandeira dos Estados Unidos", keywords: ["estados unidos", "eua", "usa", "bandeira"], group: "Bandeiras"),
         Emoji(char: "🇵🇹", name: "bandeira de Portugal", keywords: ["portugal", "bandeira"], group: "Bandeiras"),

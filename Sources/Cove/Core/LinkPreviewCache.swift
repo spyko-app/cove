@@ -3,10 +3,6 @@ import CryptoKit
 import Foundation
 import LinkPresentation
 
-/// Cache de metadados de link (título/favicon) pra URLs copiadas no clipboard.
-/// Busca via `LPMetadataProvider` (timeout 5s), memória + disco em
-/// `AppSupport/linkcards/<sha256(url)>.json`. Falha vira `Preview` sem título
-/// (host só) e fica em cache — não tenta de novo.
 @MainActor
 final class LinkPreviewCache: ObservableObject {
     struct Preview: Codable, Equatable {
@@ -24,7 +20,6 @@ final class LinkPreviewCache: ObservableObject {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
-    /// Puro — chave de cache estável e segura pra nome de arquivo (sha256 hex da URL absoluta).
     static func cacheKey(for url: URL) -> String {
         let data = Data(url.absoluteString.utf8)
         let digest = SHA256.hash(data: data)
@@ -66,7 +61,6 @@ final class LinkPreviewCache: ObservableObject {
         return Preview(title: metadata.title, host: host, iconPNG: iconPNG)
     }
 
-    /// `LPMetadataProvider` precisa rodar na main actor.
     @MainActor
     private static func startFetching(_ url: URL) async -> LPLinkMetadata? {
         let provider = LPMetadataProvider()
@@ -88,7 +82,6 @@ final class LinkPreviewCache: ObservableObject {
         }
     }
 
-    /// Ajusta `image` dentro de `size` preservando proporção, centralizado, com padding transparente.
     private nonisolated static func pngData(scaling image: NSImage, to size: NSSize) -> Data? {
         guard image.size.width > 0, image.size.height > 0,
               let rep = NSBitmapImageRep(

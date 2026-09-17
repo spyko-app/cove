@@ -2,7 +2,6 @@ import AppKit
 import Foundation
 import ScriptingBridge
 
-/// Erros de envio via Messages.app — descrições já em pt-BR pro banner da UI.
 enum MessagesError: Error, LocalizedError {
     case notRunning
     case recipientNotFound
@@ -15,13 +14,7 @@ enum MessagesError: Error, LocalizedError {
     }
 }
 
-/// Deriva o "handle" (telefone/e-mail) de uma notificação espelhada do
-/// Mensagens — o título da notificação do iMessage é o NOME do contato, não
-/// o handle, então na maioria dos casos não dá pra derivar com segurança.
-/// Só resolve quando o título já parece um telefone ou e-mail; senão `nil`
-/// (a UI cai pro nome como chave de busca em `participants`).
 enum MessageTarget {
-    /// DDI por região — só os mais comuns; fora da tabela devolve nil (sem chute).
     static func countryCallingCode(for region: String?) -> String? {
         switch region {
         case "BR": "55"
@@ -44,8 +37,6 @@ enum MessageTarget {
             let hasDigit = trimmed.contains(where: \.isNumber)
             guard hasDigit else { return nil }
             let digits = trimmed.filter(\.isNumber)
-            // Sem "+" explícito, número local (10–11 dígitos) ganha o DDI da região
-            // atual (Mensagens guarda handles em E.164). Com "+" o DDI já veio.
             if !trimmed.hasPrefix("+"), (10...11).contains(digits.count),
                let ddi = Self.countryCallingCode(for: Locale.current.region?.identifier) {
                 return "+" + ddi + digits
@@ -56,17 +47,10 @@ enum MessageTarget {
     }
 }
 
-/// Ponte ScriptingBridge com Messages.app — só ENVIA (`send:to:`), nunca lê
-/// `chat.db` (T34: prova manual, leitura só das notificações já espelhadas
-/// pelo `NotificationMirror`). Segue o mesmo padrão do `PlayerBridge`:
-/// `SBApplication(bundleIdentifier:)` + KVC dinâmico, sem header gerado, e
-/// nunca auto-lança o app — `isAvailable` exige `isRunning`. A 1ª chamada de
-/// `send` dispara o TCC de Automation (`NSAppleEventsUsageDescription`).
 @MainActor
 final class MessagesBridge {
     static let bundleID = "com.apple.MobileSMS"
 
-    /// App instalado E rodando — nunca auto-lança pra oferecer "responder".
     var isAvailable: Bool {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: Self.bundleID) != nil && isRunning
     }
@@ -75,9 +59,6 @@ final class MessagesBridge {
         !NSRunningApplication.runningApplications(withBundleIdentifier: Self.bundleID).isEmpty
     }
 
-    /// Envia `text` pro participante cujo handle/nome bate com `handle`.
-    /// Busca em `participants` (KVC `handle`/`name`/`fullName` — Messages
-    /// expõe os três) porque o handle nem sempre é derivável da notificação.
     func send(_ text: String, toHandle handle: String) throws {
         guard isRunning else { throw MessagesError.notRunning }
         guard let app = SBApplication(bundleIdentifier: Self.bundleID) else { throw MessagesError.notRunning }

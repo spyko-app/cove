@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Demo ao vivo: expande a ilha de verdade enquanto a página está visível.
 struct TourMediaPage: View {
     @ObservedObject var coordinator: NotchCoordinator
 

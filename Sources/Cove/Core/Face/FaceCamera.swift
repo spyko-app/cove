@@ -2,8 +2,6 @@
 import CoreImage
 import Foundation
 
-/// Um frame da câmera: `work` (≤ 640 px, só pra detecção) + `native` (CIImage
-/// na resolução do sensor, de onde saem os recortes — nunca reduzir pra 112).
 struct CameraFrame: @unchecked Sendable {
     let id: UInt64
     let work: CGImage
@@ -12,17 +10,11 @@ struct CameraFrame: @unchecked Sendable {
     let at: Date
 }
 
-/// Câmera built-in do Mac (nunca Continuity Camera). Construção INOFENSIVA:
-/// nenhum `AVCaptureDevice` é tocado antes de `start()`, e `start()` só é
-/// chamado por gesto na página Rosto ou por scan armado com a tela bloqueada,
-/// atrás de `AppEnvironment.isBundledApp && onboardingDone` (precedente do
-/// crash do Bluetooth com plist via -sectcreate).
 @MainActor
 final class FaceCamera: NSObject, ObservableObject {
     @Published private(set) var isRunning = false
     @Published private(set) var latest: CameraFrame?
     @Published private(set) var lastError: String?
-    /// `AVCaptureDevice.uniqueID` da câmera em uso — gravado no cadastro.
     @Published private(set) var cameraUniqueID: String?
 
     private let session = AVCaptureSession()
@@ -45,8 +37,6 @@ final class FaceCamera: NSObject, ObservableObject {
         }
     }
 
-    /// Efeitos de vídeo do sistema que alteram o frame (Centro de Controle).
-    /// Contaminam os centróides: cadastro e scan recusam enquanto ligados.
     nonisolated static func ambientEffectsActive() -> Bool {
         if AVCaptureDevice.isPortraitEffectEnabled { return true }
         if AVCaptureDevice.isStudioLightEnabled { return true }
@@ -83,8 +73,6 @@ final class FaceCamera: NSObject, ObservableObject {
         session.sessionPreset = .high
         guard let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else { throw CameraError.cannotConfigure }
         session.addInput(input)
-        // Formato de MAIOR resolução: o recorte alinhado precisa de ≥ 160 px
-        // nativos (medido: 112 px vs 448 px da mesma imagem dá d = 0,65).
         if let best = device.formats.max(by: { a, b in
             let da = CMVideoFormatDescriptionGetDimensions(a.formatDescription)
             let db = CMVideoFormatDescriptionGetDimensions(b.formatDescription)
@@ -115,7 +103,6 @@ final class FaceCamera: NSObject, ObservableObject {
         latest = nil
     }
 
-    /// Pro `shutdown()` do coordinator (síncrono, sem await).
     func stopSync() {
         guard isRunning else { return }
         session.stopRunning()
@@ -123,21 +110,14 @@ final class FaceCamera: NSObject, ObservableObject {
         latest = nil
     }
 
-    /// Reduz o frame nativo pro `work` (≤ `workMaxEdge` no maior lado, sem
-    /// upscale). `[rev2 — verificado isolado]` Compartilhado com
-    /// `FaceCalibrateCLI.frame(from:)` (T3): a paridade do offline com o app
-    /// depende de os dois passarem por AQUI.
     nonisolated static func makeWorkImage(from native: CIImage, nativeSize size: CGSize, context: CIContext) -> CGImage? {
         let scale = min(1, workMaxEdge / max(size.width, size.height))
         let workCI = scale < 1 ? native.transformed(by: CGAffineTransform(scaleX: scale, y: scale)) : native
         return context.createCGImage(workCI, from: workCI.extent)
     }
 
-    /// Recorte 1,3× do box do rosto na resolução nativa (maxEdge 448) — só
-    /// pro `GlareCueExtractor` (sem máscara: a máscara cinza mataria o brilho).
     nonisolated func renderCrop(_ frame: CameraFrame, faceBoxPixels box: CGRect) -> CGImage? {
         let inset = box.insetBy(dx: -box.width * 0.15, dy: -box.height * 0.15)
-        // CIImage é y-up: converte o box top-left → bottom-left
         let ci = CGRect(x: inset.minX, y: frame.nativeSize.height - inset.maxY, width: inset.width, height: inset.height)
             .intersection(CGRect(origin: .zero, size: frame.nativeSize))
         guard !ci.isEmpty else { return nil }
@@ -156,7 +136,6 @@ extension FaceCamera: AVCaptureVideoDataOutputSampleBufferDelegate {
         guard let pb = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let native = CIImage(cvPixelBuffer: pb)
         let size = CGSize(width: CVPixelBufferGetWidth(pb), height: CVPixelBufferGetHeight(pb))
-        // [rev2 — não typecheckado] mesmo helper do `rosto-calibrar` (paridade)
         guard let work = Self.makeWorkImage(from: native, nativeSize: size, context: ciContext) else { return }
         let at = Date()
         Task { @MainActor in

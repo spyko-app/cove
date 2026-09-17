@@ -2,7 +2,6 @@ import XCTest
 @testable import Cove
 
 final class NotchActivityTests: XCTestCase {
-    /// Pura: só chama o helper de produção com datas fixas — sem `Date()` implícito.
     private func testEventCountdownWindow(now: Date, start: Date) -> Bool {
         NotchActivity.eventCountdownActive(now: now, start: start)
     }

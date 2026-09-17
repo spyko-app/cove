@@ -1,9 +1,5 @@
 import Foundation
 
-/// Espelho de notificações do sistema no notch — lê o banco do usernoted
-/// (`group.com.apple.usernoted/db2/db`). Exige **Acesso Total ao Disco**
-/// (TCC FDA); sem ele, `available=false` e a feature se desliga com aviso
-/// nas configurações. Poll de 3s via sqlite3 CLI (sem linkar libsqlite).
 @MainActor
 final class NotificationMirror: ObservableObject {
     struct Note: Equatable, Identifiable {
@@ -16,18 +12,13 @@ final class NotificationMirror: ObservableObject {
     }
 
     @Published private(set) var available = false
-    /// Últimas notificações (todas as apps) — widgets filtram por bundleID.
     @Published private(set) var recent: [Note] = []
     func notes(for bundleID: String) -> [Note] { recent.filter { $0.bundleID == bundleID } }
     var onNotification: ((Note) -> Void)?
 
-    /// Limpa todo o histórico em memória — a base do usernoted nunca é escrita.
     func clearHistory() { recent = [] }
-    /// Limpa o histórico em memória de um único app.
     func clear(bundleID: String) { recent.removeAll { $0.bundleID == bundleID } }
 
-    /// Agrupa notas por app preservando a ordem de recência, filtrando por
-    /// título/corpo/app (case-insensitive). Puro — sem estado do mirror.
     nonisolated static func group(_ notes: [Note], query: String) -> [(bundleID: String, notes: [Note])] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let filtered = q.isEmpty ? notes : notes.filter {
@@ -55,7 +46,6 @@ final class NotificationMirror: ObservableObject {
         available = FileManager.default.isReadableFile(atPath: dbPath)
         guard available else { return }
         lastRecID = -1
-        // histórico inicial e polls FORA da main thread (sqlite3 pode demorar)
         Task.detached(priority: .utility) { [weak self] in
             await self?.poll(limit: 20, emit: false)
         }
@@ -64,10 +54,6 @@ final class NotificationMirror: ObservableObject {
         }
     }
 
-    /// Reavalia se o banco do usernoted está legível — chama depois que o
-    /// usuário pode ter concedido Acesso Total ao Disco (voltar da tela de
-    /// Privacidade, abrir a página de Notificações/Apps). Se acabou de virar
-    /// legível, começa o polling na hora, sem esperar relançar o app.
     func recheck() {
         guard AppEnvironment.isBundledApp, !available else { return }
         let nowAvailable = FileManager.default.isReadableFile(atPath: dbPath)
@@ -100,7 +86,6 @@ final class NotificationMirror: ObservableObject {
         p.standardOutput = pipe
         p.standardError = FileHandle.nullDevice
         guard (try? p.run()) != nil else { return [] }
-        // ler ANTES de esperar: saída > 64KB (blobs) enche o pipe e o filho trava
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         p.waitUntilExit()
         let out = String(data: data, encoding: .utf8) ?? ""
@@ -116,10 +101,6 @@ final class NotificationMirror: ObservableObject {
         ingest(rows: rows, emit: emit)
     }
 
-    /// Aplica linhas cruas (formato do `query()` do sqlite3 CLI) ao estado —
-    /// extraído de `poll` pra dar teste puro sem tocar o banco real (`@testable`).
-    /// Ignora qualquer linha com `rec_id <= lastRecID` ANTES de montá-la: um
-    /// poll atrasado/duplicado nunca ressuscita algo já limpo por `clear`/`clearHistory`.
     func ingest(rows: [String], emit: Bool = true) {
         let before = lastRecID
         var fresh: [Note] = []
@@ -146,7 +127,6 @@ final class NotificationMirror: ObservableObject {
 }
 
 extension Data {
-    /// Hex string → Data (pro quote() do sqlite).
     init?(hex: String) {
         let chars = Array(hex)
         guard chars.count % 2 == 0 else { return nil }

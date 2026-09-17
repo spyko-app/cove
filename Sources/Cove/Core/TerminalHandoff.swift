@@ -2,7 +2,6 @@ import AppKit
 import Foundation
 import os
 
-/// Terminais externos suportados pro handoff da ilha (T32).
 enum TerminalApp: String, CaseIterable {
     case wezterm
     case kitty
@@ -30,13 +29,10 @@ enum TerminalApp: String, CaseIterable {
         }
     }
 
-    /// Lista os terminais instalados no Mac, na ordem do enum.
     static func installed() -> [TerminalApp] {
         allCases.filter { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0.bundleID) != nil }
     }
 
-    /// Monta o executável + argumentos pra abrir `app` já no diretório `cwd`.
-    /// Puro: não lança processo, só resolve o caminho do app instalado.
     static func launchArguments(app: TerminalApp, cwd: String) -> (executable: URL?, arguments: [String])? {
         guard let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app.bundleID) else {
             return nil
@@ -44,8 +40,6 @@ enum TerminalApp: String, CaseIterable {
         return launchArguments(app: app, appURL: appURL, cwd: cwd)
     }
 
-    /// Variante testável: recebe a URL do `.app` já resolvida (real ou fake),
-    /// sem depender do `NSWorkspace` — é o que os testes exercitam.
     static func launchArguments(app: TerminalApp, appURL: URL, cwd: String) -> (executable: URL?, arguments: [String]) {
         switch app {
         case .wezterm:
@@ -62,7 +56,6 @@ enum TerminalApp: String, CaseIterable {
         }
     }
 
-    /// Lança o terminal já no `cwd`. Roda fora da main thread; erro é só logado.
     static func launch(app: TerminalApp, cwd: String) {
         guard let (executable, arguments) = launchArguments(app: app, cwd: cwd), let executable else {
             Logger.terminalHandoff.error("handoff: \(app.label, privacy: .public) não instalado ou sem CLI")

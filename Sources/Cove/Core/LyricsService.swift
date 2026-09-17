@@ -1,9 +1,6 @@
 import CryptoKit
 import Foundation
 
-/// Cliente HTTP opcional pra letras sincronizadas via LRCLIB (lrclib.net).
-/// Terceiro, desligado por padrão (`config.lyricsEnabled`). Cache local em disco
-/// (30 dias pra achado, 1 dia pra "não encontrado").
 @MainActor
 final class LyricsService: ObservableObject {
     enum State: Equatable {
@@ -34,8 +31,6 @@ final class LyricsService: ObservableObject {
         return "Cove/\(version) (https://github.com/cove-app/cove)"
     }
 
-    /// Busca a letra da faixa. Só age se `lyricsEnabled` estiver ligado no config.
-    /// Debounce: ignora se a faixa (título+artista) não mudou; cancela busca anterior.
     func fetch(title: String, artist: String, album: String?, duration: Double) {
         guard NotchConfigStore.load().lyricsEnabled else {
             reset()
@@ -60,7 +55,6 @@ final class LyricsService: ObservableObject {
         }
     }
 
-    /// Remove todo o cache local de letras (chamado pelo botão em Settings).
     static func clearCache() {
         guard let items = try? FileManager.default.contentsOfDirectory(
             at: cacheDir, includingPropertiesForKeys: nil)

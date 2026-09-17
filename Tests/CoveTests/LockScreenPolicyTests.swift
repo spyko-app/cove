@@ -1,8 +1,6 @@
 import XCTest
 @testable import Cove
 
-/// A bridge SkyLight em si não é testável sem WindowServer — só a regra pura
-/// de quando delegar os painéis ao space da tela de bloqueio.
 final class LockScreenPolicyTests: XCTestCase {
     func testDelegatesOnlyWhenLockedEnabledAndBridgeAvailable() {
         XCTAssertTrue(LockScreenPolicy.shouldDelegate(locked: true, enabled: true, bridgeAvailable: true))
@@ -24,8 +22,6 @@ final class LockScreenPolicyTests: XCTestCase {
         XCTAssertFalse(LockScreenPolicy.shouldDelegate(locked: false, enabled: false, bridgeAvailable: false))
     }
 
-    // MARK: - allowsPeek: notificação nunca sobe por cima do loginwindow
-
     func testNotificationPeekBlockedWhileLocked() {
         XCTAssertFalse(LockScreenPolicy.allowsPeek(kindKey: "notification", locked: true))
     }
@@ -45,8 +41,6 @@ final class LockScreenPolicyTests: XCTestCase {
         let a = NotchActivity.notification(app: "Mensagens", title: "oi")
         XCTAssertFalse(LockScreenPolicy.allowsPeek(kindKey: a.kindKey, locked: true))
     }
-
-    // MARK: - redactedForLockScreen: texto livre vira genérico, payload fica
 
     func testEventTitleRedacted() {
         XCTAssertEqual(NotchActivity.event(title: "Entrevista — Empresa X", minutes: 8).redactedForLockScreen,

@@ -22,7 +22,7 @@ final class SettingsSearchIndexTests: XCTestCase {
         let idx = SettingsSearchIndex.coveNotch
         XCTAssertTrue(idx.matches("tela de bloqueio").contains("Telas"))
         XCTAssertTrue(idx.matches("lock screen").contains("Telas"))
-        XCTAssertTrue(idx.matches("bloqueio").contains("Telas"))   // também bate em HUDs e eventos
+        XCTAssertTrue(idx.matches("bloqueio").contains("Telas"))
     }
 
     func testLockScreenWidgetKeywordsFindTelas() {

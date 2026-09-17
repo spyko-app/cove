@@ -3,8 +3,6 @@ import XCTest
 
 final class WideIslandLayoutTests: XCTestCase {
 
-    // MARK: - Matriz mode × simulated
-
     func testIsWideMatrix() {
         XCTAssertFalse(WideIslandLayout.isWide(mode: .off, simulated: false))
         XCTAssertFalse(WideIslandLayout.isWide(mode: .off, simulated: true))
@@ -18,8 +16,6 @@ final class WideIslandLayoutTests: XCTestCase {
         XCTAssertEqual(WideIslandLayout.extraWidth, 120)
     }
 
-    // MARK: - Config
-
     func testConfigDefaultIsExternalOnly() throws {
         XCTAssertEqual(NotchConfig().wideIsland, .externalOnly)
         let cfg = try JSONDecoder().decode(NotchConfig.self, from: #"{}"#.data(using: .utf8)!)
@@ -32,13 +28,11 @@ final class WideIslandLayoutTests: XCTestCase {
         XCTAssertEqual(cfg.wideIsland, .always)
     }
 
-    /// rawValue desconhecido NÃO pode lançar: o `try?` do store devolveria o
-    /// config inteiro no default e o dono perderia todos os ajustes.
     func testConfigUnknownValueFallsBackWithoutThrowing() throws {
         let cfg = try JSONDecoder().decode(
             NotchConfig.self, from: #"{"wideIsland":"banana","hudStyle":"glow"}"#.data(using: .utf8)!)
         XCTAssertEqual(cfg.wideIsland, .externalOnly)
-        XCTAssertEqual(cfg.hudStyle, "glow")   // resto do config sobreviveu
+        XCTAssertEqual(cfg.hudStyle, "glow")
     }
 
     func testConfigWrongTypeFallsBack() throws {
@@ -54,8 +48,6 @@ final class WideIslandLayoutTests: XCTestCase {
         XCTAssertEqual(back.wideIsland, .off)
     }
 
-    // MARK: - Seletor de conteúdo
-
     func testPickNothing() {
         XCTAssertNil(WideIslandContent.pick(media: false, activity: nil))
     }
@@ -69,13 +61,11 @@ final class WideIslandLayoutTests: XCTestCase {
         XCTAssertEqual(WideIslandContent.pick(media: false, activity: a), .activity(a))
     }
 
-    /// Mídia E atividade: a atividade (o que muda) à direita, arte à esquerda.
     func testPickMediaAndActivity() {
         let a = NotchActivity.recording(elapsed: 12)
         XCTAssertEqual(WideIslandContent.pick(media: true, activity: a), .mediaAndActivity(a))
     }
 
-    /// Atividade não elegível (HUD de volume) é ignorada pelo seletor.
     func testPickIgnoresNonWideActivity() {
         XCTAssertEqual(WideIslandContent.pick(media: true, activity: .volume(0.5, muted: false)), .media)
         XCTAssertNil(WideIslandContent.pick(media: false, activity: .volume(0.5, muted: false)))
@@ -93,8 +83,6 @@ final class WideIslandLayoutTests: XCTestCase {
         XCTAssertFalse(WideIslandContent.isWideActivity(.track(title: "a", artist: "b")))
     }
 
-    /// A chave de animação não pode mudar com o payload (mm:ss muda a cada
-    /// segundo — senão o spring de largura re-dispara a cada tick).
     func testAnimationKeyIsStableAcrossPayloadTicks() {
         let a = WideIslandContent.activity(.timer(label: "Foco", remaining: 90))
         let b = WideIslandContent.activity(.timer(label: "Foco", remaining: 89))
@@ -103,8 +91,6 @@ final class WideIslandLayoutTests: XCTestCase {
         XCTAssertNotEqual(a.animationKey,
                           WideIslandContent.mediaAndActivity(.timer(label: "Foco", remaining: 90)).animationKey)
     }
-
-    // MARK: - Rótulos
 
     func testLabels() {
         XCTAssertEqual(WideIslandLayout.label(for: .timer(label: "Pomodoro", remaining: 60)), "Pomodoro")

@@ -11,7 +11,6 @@ import XCTest
     }
 
     func testVPNDuplicateInterfaceKeyEmitsNothing() {
-        // IPv4 e IPv6 da mesma utun colapsam num Set — não deve virar dois eventos.
         let names = VPNMonitor.interfaceNames(fromKeys: [
             "State:/Network/Interface/utun3/IPv4",
             "State:/Network/Interface/utun3/IPv6",
@@ -29,8 +28,6 @@ import XCTest
     }
 
     func testPrimeStateWithActiveInterfacesIsUpButSilent() {
-        // Túnel preexistente no boot (Screen Time, Tailscale, VPN corporativa)
-        // só registra estado — não é um evento pra emitir.
         XCTAssertTrue(VPNMonitor.primeState(activeInterfaces: ["utun3"]))
     }
 

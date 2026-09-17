@@ -39,7 +39,6 @@ final class TerminalHandoffTests: XCTestCase {
         XCTAssertEqual(result.arguments, ["-a", fakeAppURL.path, cwd])
     }
 
-    /// Caminho com espaço preservado como um único argumento (nunca splitado).
     func testPathWithSpacesStaysOneArgument() {
         let cwd = "/Volumes/Disco Externo/pasta com espaço"
         let result = TerminalApp.launchArguments(app: .kitty, appURL: fakeAppURL, cwd: cwd)
@@ -48,9 +47,6 @@ final class TerminalHandoffTests: XCTestCase {
     }
 
     func testInstalledLookupNeverCrashesWhenAppMissing() {
-        // Sem dependência de apps reais instalados no ambiente de CI: garante
-        // que a busca via NSWorkspace não lança/trava E que o resultado é
-        // sempre um subconjunto válido de TerminalApp.allCases (sem duplicata).
         for app in TerminalApp.allCases {
             _ = TerminalApp.launchArguments(app: app, cwd: NSHomeDirectory())
         }

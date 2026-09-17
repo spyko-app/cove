@@ -20,7 +20,7 @@ final class SearchIndicatorTests: XCTestCase {
         let s = SpotlightSearch()
         s.search("relatorio")
         XCTAssertEqual(SearchIndicator.resolve(isSearching: s.isSearching), .orb)
-        s.search("   ")   // campo limpo: cancela e volta pra lupa
+        s.search("   ")
         XCTAssertEqual(SearchIndicator.resolve(isSearching: s.isSearching), .glass)
     }
 

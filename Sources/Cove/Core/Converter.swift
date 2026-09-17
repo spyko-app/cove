@@ -3,7 +3,6 @@ import AppKit
 import Foundation
 import PDFKit
 
-/// Um job de conversão do droplet Converter.
 struct ConvertJob: Identifiable {
     enum State: Equatable {
         case queued
@@ -19,7 +18,6 @@ struct ConvertJob: Identifiable {
     var state: State = .queued
 }
 
-/// Fila de conversão on-device (AVFoundation + PDFKit). Roda um job por vez.
 @MainActor
 final class Converter: ObservableObject {
     @Published private(set) var jobs: [ConvertJob] = []
@@ -76,8 +74,6 @@ final class Converter: ObservableObject {
         }
     }
 
-    // MARK: - Vídeo/áudio (AVFoundation)
-
     private func convertAVAsset(_ job: ConvertJob) async throws -> URL {
         let asset = AVURLAsset(url: job.input)
         let (avPreset, outputType): (String, AVFileType) = switch job.preset {
@@ -103,8 +99,6 @@ final class Converter: ObservableObject {
         try await session.export(to: output, as: outputType)
         return output
     }
-
-    // MARK: - Imagens/PDF (PDFKit)
 
     private func convertImagesToPDF(_ job: ConvertJob) throws -> URL {
         guard let image = NSImage(contentsOf: job.input) else { throw ConverterError.imageUnreadable }
@@ -155,8 +149,6 @@ final class Converter: ObservableObject {
         return output
     }
 
-    /// Codifica em JPEG (qualidade 0.9) desenhando num bitmap RGB sem canal alfa,
-    /// evitando artefatos de transparência preservada incorretamente pelo encoder.
     private static func jpegData(from image: NSImage) throws -> Data {
         let size = image.size
         guard size.width > 0, size.height > 0,
@@ -188,8 +180,6 @@ final class Converter: ObservableObject {
         }
         return data
     }
-
-    // MARK: - Nomes de saída
 
     private static func uniqueOutputURL(for input: URL, extension ext: String) -> URL {
         let dir = input.deletingLastPathComponent()

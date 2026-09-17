@@ -1,9 +1,8 @@
 import Foundation
 
-/// Config persistente (~/.config/cove/config.json), decode tolerante.
 struct NotchConfig: Codable {
-    var hudDuration: Double = 1.6          // peek de volume/brilho
-    var eventDuration: Double = 3.0        // bateria/bluetooth/foco
+    var hudDuration: Double = 1.6
+    var eventDuration: Double = 3.0
     var lowBatteryThreshold: Int = 20
     var notifyOnLowPowerMode = true
     var showVolumeHUD = true
@@ -23,25 +22,25 @@ struct NotchConfig: Codable {
     var hourlyChime = false
     var eventSounds = true
     var liveWaveform = true
-    var motionArt = false   // dono: fundo "pulsando" reprovado — opt-in
+    var motionArt = false
     var showNotifications = true
     var launchAtLogin = false
     var hideFromCapture = false
-    var displayOn = "all"          // all | builtin | external
-    var displayOverrides: [String: Bool] = [:]   // uuid do display -> true(mostrar)/false(ocultar); ausente = usa displayOn
+    var displayOn = "all"
+    var displayOverrides: [String: Bool] = [:]
     var hoverDuration = 0.1
     var hapticFeedback = true
     var trackChangePeek = true
-    var hudStyle = "white"             // white | accent | glow
-    var hudStyles: [String: String] = [:]  // kindKey -> estilo (override do global, ver HUDStyleResolver)
+    var hudStyle = "white"
+    var hudStyles: [String: String] = [:]
     var hideInFullscreen = true
-    var showOnLockScreen = true          // ilha (fechada, só exibição) por cima da tela de bloqueio via SkyLight
-    var lockScreenWidgets: [LockScreenWidget] = LockScreenWidget.defaults   // linha sob o relógio (estilo Alcove)
+    var showOnLockScreen = true
+    var lockScreenWidgets: [LockScreenWidget] = LockScreenWidget.defaults
     var keyboardBrightnessHUD = true
     var verticalGestures = true
-    var pullDownOpensSearch = true      // puxar a ilha fechada pra baixo abre a Busca ("Buscar ou perguntar")
+    var pullDownOpensSearch = true
     var onboardingDone = false
-    var pinnedApps: [String] = []       // bundle IDs mostrados no expandido
+    var pinnedApps: [String] = []
     var enabledDroplets: [String] = ["shelf", "clipboard", "tools", "search", "apps"]
     var shelfWidgets: [String] = ["files", "quickActions"]
     var shelfQuickActions: [String] = ["airdrop", "finder", "compress", "copyPath"]
@@ -49,19 +48,18 @@ struct NotchConfig: Codable {
     var dropletHotKeys: [String: String] = [:]
     var ringActions: [RingAction] = RingAction.defaults
     var obsidianVaultPath = ""
-    var clipboardRetentionDays = 0       // 0 = sem limite de tempo
-    var clipboardLimit = 200             // 0 = ilimitado
+    var clipboardRetentionDays = 0
+    var clipboardLimit = 200
     var clearClipboardOnQuit = false
     var openEditorAfterCapture = true
-    var calendarIDs: [String] = []       // vazio = todos os calendários
-    var firstWeekday = Calendar.current.firstWeekday   // 1 = domingo, 2 = segunda
-    var highAlertDuration = 0            // HighAlert.Duration.rawValue — 0 = ∞
-    var dynamicGlass = false             // Liquid Glass nos cards internos (macOS 26+). OFF por padrão: o dono quer a ilha preta pura, sem cara de "tela ligada" (12/set)
-    var dynamicGlassTint: Double = 0.55  // intensidade do vidro: 0 = ultraclaro, 1 = tingido
-    var lyricsEnabled = false            // Letras via LRCLIB (terceiro, opt-in) — off por padrão
-    var expandActivityOnLongPress = true // toque longo (≥0,45s) na ilha fechada abre a atividade expandida
-    var expandActivityOnAlert = true     // alerta de prioridade alta abre a atividade expandida sozinha
-    /// Estilo largo da ilha fechada (iOS 27 `isDynamicIslandLimitedInWidth`).
+    var calendarIDs: [String] = []
+    var firstWeekday = Calendar.current.firstWeekday
+    var highAlertDuration = 0
+    var dynamicGlass = false
+    var dynamicGlassTint: Double = 0.55
+    var lyricsEnabled = false
+    var expandActivityOnLongPress = true
+    var expandActivityOnAlert = true
     var wideIsland: WideIslandMode = .externalOnly
 
     init() {}
@@ -101,7 +99,6 @@ struct NotchConfig: Codable {
         hudStyles = try c.decodeIfPresent([String: String].self, forKey: .hudStyles) ?? [:]
         hideInFullscreen = try c.decodeIfPresent(Bool.self, forKey: .hideInFullscreen) ?? true
         showOnLockScreen = try c.decodeIfPresent(Bool.self, forKey: .showOnLockScreen) ?? true
-        // como String: valor desconhecido é ignorado, nunca derruba o config (precedente `wideIsland`)
         lockScreenWidgets = LockScreenWidget.decode((try? c.decodeIfPresent([String].self, forKey: .lockScreenWidgets)) ?? nil)
         keyboardBrightnessHUD = try c.decodeIfPresent(Bool.self, forKey: .keyboardBrightnessHUD) ?? true
         verticalGestures = try c.decodeIfPresent(Bool.self, forKey: .verticalGestures) ?? true
@@ -131,9 +128,6 @@ struct NotchConfig: Codable {
         lyricsEnabled = try c.decodeIfPresent(Bool.self, forKey: .lyricsEnabled) ?? false
         expandActivityOnLongPress = try c.decodeIfPresent(Bool.self, forKey: .expandActivityOnLongPress) ?? true
         expandActivityOnAlert = try c.decodeIfPresent(Bool.self, forKey: .expandActivityOnAlert) ?? true
-        // decodifica como String: um rawValue desconhecido no JSON faria o
-        // decode do enum LANÇAR e o `try?` do store devolveria o config
-        // INTEIRO no default (perderia tudo que o dono ajustou).
         wideIsland = WideIslandMode(rawValue: (try? c.decodeIfPresent(String.self, forKey: .wideIsland)) ?? nil ?? "") ?? .externalOnly
     }
 }
@@ -160,7 +154,6 @@ enum NotchConfigStore {
     }
 }
 
-/// Rodando como .app (TCC/plist reais) ou como binário dev (swift run)?
 enum AppEnvironment {
     static let isBundledApp = Bundle.main.bundlePath.hasSuffix(".app")
 }

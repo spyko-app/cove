@@ -1,7 +1,5 @@
 import AppKit
 
-/// Recentes do droplet Emoji — MRU, persistido em `AppSupport/emoji-recents.json`.
-/// `use(_:)` copia pro pasteboard (colar-no-cursor exige Acessibilidade → T36).
 @MainActor
 final class EmojiStore: ObservableObject {
     @Published private(set) var recents: [String] = []
@@ -9,8 +7,6 @@ final class EmojiStore: ObservableObject {
     private let limit: Int
     private let pasteboard: NSPasteboard
 
-    /// `pasteboard` injetável — testes usam um `NSPasteboard` nomeado próprio
-    /// pra não sujar o clipboard real da máquina que roda a suíte.
     init(storage: URL = AppSupport.file("emoji-recents.json"), limit: Int = 24, pasteboard: NSPasteboard = .general) {
         self.storage = storage
         self.limit = limit
@@ -21,8 +17,6 @@ final class EmojiStore: ObservableObject {
         }
     }
 
-    /// `pasteAtCursor: true` tenta colar direto (T36); se falhar (sem
-    /// Acessibilidade, ou nada pra colar), cai em só copiar pro pasteboard.
     @discardableResult
     func use(_ char: String, pasteAtCursor: Bool = false) -> Bool {
         let pasted = pasteAtCursor && PasteAtCursor.paste(char)

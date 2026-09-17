@@ -1,4 +1,3 @@
-/// Navegação pura do pager do tour — sem estado, fácil de testar.
 enum TourPages {
     static func next(_ index: Int, count: Int) -> Int {
         guard count > 0 else { return 0 }

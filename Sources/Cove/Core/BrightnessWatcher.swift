@@ -1,9 +1,6 @@
 import CoreGraphics
 import Foundation
 
-/// Observa o brilho do display interno (DisplayServices privado, mesmo padrão
-/// dlopen do CoveDisplay) — alimenta o HUD de brilho. Poll leve (250ms, uma
-/// chamada C) porque o callback de notificação do DS não é público.
 @MainActor
 final class BrightnessWatcher {
     var onBrightnessChange: ((Float) -> Void)?
@@ -29,8 +26,6 @@ final class BrightnessWatcher {
     private var last: Float = -1
     private var timer: Timer?
 
-    /// Com o key tap ativo as teclas já reportam; poll só cobre mudanças
-    /// externas (Central de Controle) — cadência cai de 250ms pra 1s.
     func setSlowMode(_ slow: Bool) {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: slow ? 1.0 : 0.25, repeats: true) { [weak self] _ in
@@ -54,7 +49,6 @@ final class BrightnessWatcher {
 
     private func tick() {
         guard let v = Self.read() else { return }
-        // auto-brilho (sensor de luz) anda em passos ~1% — não é o usuário; tecla/slider = 6%+
         if last >= 0, abs(v - last) >= 0.03 {
             onBrightnessChange?(v)
         }

@@ -2,7 +2,6 @@ import XCTest
 @testable import Cove
 
 final class LRCParserTests: XCTestCase {
-    // MARK: - Formatos de timestamp
 
     func testParsesTwoDigitMilliseconds() {
         let lrc = "[00:12.34]Primeira linha"
@@ -24,8 +23,6 @@ final class LRCParserTests: XCTestCase {
         XCTAssertEqual(lines.first?.time, 65.0)
     }
 
-    // MARK: - Múltiplos timestamps por linha
-
     func testMultipleTimestampsSameLine() {
         let lrc = "[00:10.00][00:20.00]Refrão repetido"
         let lines = LRCParser.parse(lrc)
@@ -33,8 +30,6 @@ final class LRCParserTests: XCTestCase {
         XCTAssertEqual(lines[0], LyricLine(time: 10.0, text: "Refrão repetido"))
         XCTAssertEqual(lines[1], LyricLine(time: 20.0, text: "Refrão repetido"))
     }
-
-    // MARK: - Metadados ignorados
 
     func testIgnoresMetadataTags() {
         let lrc = """
@@ -53,8 +48,6 @@ final class LRCParserTests: XCTestCase {
         XCTAssertEqual(lines, [LyricLine(time: 1.0, text: "Ok")])
     }
 
-    // MARK: - Ordenação
-
     func testSortsByTime() {
         let lrc = """
         [00:30.00]Terceira
@@ -65,8 +58,6 @@ final class LRCParserTests: XCTestCase {
         XCTAssertEqual(lines.map(\.text), ["Primeira", "Segunda", "Terceira"])
     }
 
-    // MARK: - Linhas vazias / em branco
-
     func testSkipsBlankLines() {
         let lrc = "[00:01.00]Linha 1\n\n[00:02.00]Linha 2"
         let lines = LRCParser.parse(lrc)
@@ -76,8 +67,6 @@ final class LRCParserTests: XCTestCase {
     func testEmptyInputReturnsEmpty() {
         XCTAssertEqual(LRCParser.parse(""), [])
     }
-
-    // MARK: - currentIndex
 
     func testCurrentIndexBeforeFirstLine() {
         let lines = [LyricLine(time: 5, text: "A"), LyricLine(time: 10, text: "B")]

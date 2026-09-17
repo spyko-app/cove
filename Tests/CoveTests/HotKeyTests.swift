@@ -9,7 +9,7 @@ final class HotKeyTests: XCTestCase {
         XCTAssertEqual(c.modifiers, UInt32(controlKey | optionKey))
         XCTAssertEqual(HotKeyCombo.parse("cmd+shift+k")?.keyCode, 40)
         XCTAssertNil(HotKeyCombo.parse("banana"))
-        XCTAssertNil(HotKeyCombo.parse("space"))  // sem modificador não vale
+        XCTAssertNil(HotKeyCombo.parse("space"))
     }
 
     func testDuplicateComboRejected() {
@@ -43,10 +43,6 @@ final class HotKeyTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(a, 100)
             XCTAssertTrue(seen.insert(a).inserted, "id duplicado para \(d)")
         }
-        // Pino a ordem/rawValue dos 7 primeiros droplets: `id(for:)` deriva do
-        // índice em allCases, então reordenar Droplet.swift muda ids persistidos
-        // em hotkeys salvas do usuário — se isto falhar, NÃO reordene os cases,
-        // só adicione novos no fim.
         XCTAssertEqual(
             Array(Droplet.allCases.map(\.rawValue).prefix(7)),
             ["media", "apps", "shelf", "clipboard", "tools", "search", "terminal"]

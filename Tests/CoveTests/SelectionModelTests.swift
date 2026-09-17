@@ -70,8 +70,6 @@ final class SelectionModelTests: XCTestCase {
         XCTAssertFalse(m.isSelected(3))
     }
 
-    /// `selectOnly` colapsa qualquer seleção múltipla pra um único item e vira âncora —
-    /// usado pela navegação por teclado (T22 #1) sem depender de `ordered`.
     func testSelectOnlyCollapsesMultiSelection() {
         var m = SelectionModel<Int>()
         m.click(2, ordered: ordered, shift: false, command: true)

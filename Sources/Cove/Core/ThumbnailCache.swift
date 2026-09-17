@@ -1,8 +1,6 @@
 import AppKit
 import QuickLookThumbnailing
 
-/// Cache de miniaturas por `URL` pra preview de arrasto (T22).
-/// Gera fora da main actor e publica o resultado; até chegar, usa o ícone do Finder.
 @MainActor
 final class ThumbnailCache: ObservableObject {
     static let shared = ThumbnailCache()

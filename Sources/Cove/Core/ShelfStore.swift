@@ -7,16 +7,11 @@ struct ShelfItem: Identifiable, Codable, Equatable {
     let addedAt: Date
 }
 
-/// Cesta (Droppy "Basket"): arquivos arrastados pra ilha ficam aqui até serem usados.
 @MainActor
 final class ShelfStore: ObservableObject {
     @Published private(set) var items: [ShelfItem] = []
     @Published private(set) var isVerifying = false
-    /// Último erro de ação (zip etc.), mostrado pela página como aviso.
     @Published var lastError: String?
-    /// Layout atual da Cesta (widgets + Quick Actions), já normalizado. Atualizado
-    /// por polling do config enquanto a página está visível (`startObservingConfig`),
-    /// pra refletir mudança feita nas Settings sem reabrir a ilha.
     @Published var layout: (widgets: [String], actions: [String]) = (
         ShelfLayout.normalize(NotchConfig().shelfWidgets),
         ShelfLayout.normalizeActions(NotchConfig().shelfQuickActions)
@@ -24,22 +19,14 @@ final class ShelfStore: ObservableObject {
     private let storage: URL
     private(set) var verificationTask: Task<Void, Never>?
     private var configCancellable: AnyCancellable?
-    /// Duas telas com a Cesta aberta ao mesmo tempo: o `onDisappear` de uma
-    /// não pode desligar a observação de config que a outra ainda usa (#31).
     private lazy var activeCount = ActiveCount(onFirst: { [weak self] in self?.refreshLayout() },
                                                 onLast: {})
-    /// Mantido forte enquanto o `NSSharingServicePicker` está aberto.
     private var sharingDelegate: SharingPickerDelegate?
 
     init(storage: URL = AppSupport.file("shelf.json")) {
         self.storage = storage
         guard let data = try? Data(contentsOf: storage),
               let saved = try? JSONDecoder().decode([ShelfItem].self, from: data) else { return }
-        // Carrega otimista: itens aparecem de cara. fileExists roda fora da
-        // main thread, com timeout (#25) — volume de rede/externo desconectado
-        // nunca trava o launch. No timeout, mantém os itens como carregados
-        // (não some entrada real só porque estava lenta); a verificação só
-        // remove os confirmados ausentes, e nunca salva por conta própria.
         items = saved
         isVerifying = true
         verificationTask = Task { [weak self] in
@@ -87,11 +74,6 @@ final class ShelfStore: ObservableObject {
         svc.perform(withItems: urls)
     }
 
-    /// Mostra o `NSSharingServicePicker` do sistema (Mail, Mensagens, iCloud
-    /// Drive etc.) ancorado em `rect`/`view`. O painel da ilha fica em
-    /// `.screenSaver`, então o menu do picker some atrás dele — sobe pra
-    /// `.floating` enquanto ele estiver aberto e volta ao fechar (delegate
-    /// é chamado com `nil` no dismiss). Delegate mantido forte no store.
     func share(_ ids: [UUID], from view: NSView?, rect: NSRect) {
         let urls = items.filter { ids.contains($0.id) }.map(\.url)
         guard !urls.isEmpty, let view else { return }
@@ -106,7 +88,6 @@ final class ShelfStore: ObservableObject {
         picker.show(relativeTo: rect, of: view, preferredEdge: .minY)
     }
 
-    /// Copia os caminhos (um por linha) pro pasteboard.
     func copyPaths(_ ids: [UUID]) {
         let paths = items.filter { ids.contains($0.id) }.map(\.url.path).joined(separator: "\n")
         guard !paths.isEmpty else { return }
@@ -115,8 +96,6 @@ final class ShelfStore: ObservableObject {
         pb.setString(paths, forType: .string)
     }
 
-    /// Zip via `/usr/bin/zip`, resultado adicionado à cesta. Roda fora da main
-    /// thread (não bloqueia a UI); volta pro MainActor só pra `add`.
     func compress(_ ids: [UUID]) {
         let urls = items.filter { ids.contains($0.id) }.map(\.url)
         guard let first = urls.first else { return }
@@ -154,18 +133,11 @@ final class ShelfStore: ObservableObject {
         try? JSONEncoder().encode(items).write(to: storage)
     }
 
-    /// Lê o config do disco e recomputa o layout normalizado — só usado no
-    /// boot (property initializer) e como fallback se `bindConfig` nunca
-    /// rodou. Com o coordinator vivo, o layout já vem de `bindConfig` (#35).
     func refreshLayout() {
         let cfg = NotchConfigStore.load()
         layout = (ShelfLayout.normalize(cfg.shelfWidgets), ShelfLayout.normalizeActions(cfg.shelfQuickActions))
     }
 
-    /// Mantém `layout` sincronizado com `coordinator.config` — sem reler o
-    /// JSON do disco a cada 2s (#35: era `startObservingConfig` com polling).
-    /// Chamado UMA vez no `init` do `NotchCoordinator`; a partir daí o layout
-    /// reage à mudança de config em qualquer momento, painel aberto ou não.
     func bindConfig(_ publisher: Published<NotchConfig>.Publisher) {
         configCancellable = publisher
             .map { (ShelfLayout.normalize($0.shelfWidgets), ShelfLayout.normalizeActions($0.shelfQuickActions)) }
@@ -173,17 +145,10 @@ final class ShelfStore: ObservableObject {
             .sink { [weak self] layout in self?.layout = layout }
     }
 
-    /// Chamar em `onAppear` da Cesta — refcount (#31): com `bindConfig` já
-    /// mantendo o layout fresco, isto só garante um `refreshLayout()`
-    /// imediato na 1ª abertura concorrente; nunca chamar `refreshLayout()` direto daqui.
     func startObservingConfig() { activeCount.retain() }
-    /// Chamar em `onDisappear` da Cesta — contraparte de `startObservingConfig()`.
     func stopObservingConfig() { activeCount.release() }
 }
 
-/// Delegate mínimo do `NSSharingServicePicker`: só usado pra saber quando o
-/// picker fecha (chamado com `serviceChoice: nil` no dismiss) e restaurar o
-/// nível do painel da ilha.
 @MainActor
 private final class SharingPickerDelegate: NSObject, NSSharingServicePickerDelegate {
     private let onDismiss: () -> Void

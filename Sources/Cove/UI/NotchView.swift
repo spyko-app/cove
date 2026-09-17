@@ -1,9 +1,5 @@
 import SwiftUI
 
-/// Forma do notch: retângulo com cantos inferiores contínuos (curva Apple).
-/// Forma do notch como no Alcove/hardware: topo com fillet CÔNCAVO (o preto
-/// "escorre" pra fora e some na barra de menu), cantos inferiores convexos.
-/// `topRadius` = raio do flare; o corpo tem largura rect.width - 2*flare.
 struct NotchShape: Shape {
     var bottomRadius: CGFloat = 12
     var topRadius: CGFloat = 0
@@ -18,7 +14,6 @@ struct NotchShape: Shape {
         let w = rect.width, h = rect.height
         var p = Path()
         p.move(to: CGPoint(x: 0, y: 0))
-        // flare esquerdo: tangente horizontal no topo → vertical na parede
         p.addQuadCurve(to: CGPoint(x: t, y: t), control: CGPoint(x: t, y: 0))
         p.addLine(to: CGPoint(x: t, y: h - b))
         p.addQuadCurve(to: CGPoint(x: t + b, y: h), control: CGPoint(x: t, y: h))
@@ -31,14 +26,10 @@ struct NotchShape: Shape {
     }
 }
 
-/// Ilha estilo Dynamic Island, 4 estados:
-/// idle (notch puro) → asas (mídia) → peek (HUD/evento transitório) → expandido (hover).
 struct NotchView: View {
     @ObservedObject var coordinator: NotchCoordinator
     let notchSize: CGSize
     let simulated: Bool
-    /// Tela deste painel e se é a ilha PRIMÁRIA — usados pra filtrar
-    /// `UIRequest`s que miram outra tela (#30).
     let displayID: CGDirectDisplayID
     let isPrimary: Bool
 
@@ -47,49 +38,28 @@ struct NotchView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var morph
     @State private var hoverTask: Task<Void, Never>?
-    /// Monitor de clique FORA do app enquanto a atividade expandida está aberta.
     @State private var outsideClickMonitor: Any?
-    /// Estado capturado no INÍCIO do toque longo (a ilha pode abrir por hover
-    /// aos 0,1 s, antes de o gesto de 0,45 s terminar).
     @State private var pressStartedOnActivity = false
-    /// 0 = mídia, 1 = apps (shelf). Sem mídia, só existe a página de apps.
-    @State private var page = Int(ProcessInfo.processInfo.environment["COVE_PREVIEW_PAGE"] ?? "") ?? 0   // dev: página inicial
-    /// Desbloqueou há < 600 ms: o cadeado vira `lock.open.fill` antes de recolher.
+    @State private var page = Int(ProcessInfo.processInfo.environment["COVE_PREVIEW_PAGE"] ?? "") ?? 0
     @State private var openLockGrace = false
     @State private var openLockTask: Task<Void, Never>?
 
     private var media: MediaRemoteService { coordinator.media }
     private var hasMedia: Bool { !media.nowPlaying.title.isEmpty }
-    /// Asas da ilha FECHADA (capa + equalizador) só enquanto toca. Pausado, a ilha
-    /// recolhe pro tamanho do notch e fica preto puro — sem "tela ligada" (dono, 12/set).
-    /// A página Mídia continua existindo (hasMedia) pra abrir e dar play.
-    /// Bloqueada: NUNCA (Alcove: sem capa/waveform no lock — privacidade e fidelidade).
     private var showWings: Bool { hasMedia && media.nowPlaying.isPlaying && !coordinator.isScreenLocked }
-    /// Estado de repouso da tela de bloqueio (estilo Alcove): cadeado na asa
-    /// esquerda, direita vazia, largura das asas de mídia. Vale enquanto
-    /// bloqueada e mais 600 ms depois do unlock (cadeado aberto).
     private var lockResting: Bool { coordinator.isScreenLocked || openLockGrace }
     private var pages: [Droplet] { Droplet.pages(enabled: coordinator.config.enabledDroplets, hasMedia: hasMedia) }
     private var currentDroplet: Droplet { pages[min(page, pages.count - 1)] }
-    /// Tela bloqueada: todo texto livre sai redigido (`redactedForLockScreen`)
-    /// — na renderização, não na publicação, então troca na hora ao bloquear
-    /// e volta no unlock sem estado novo (`isScreenLocked` é `@Published`).
     private func lockSafe(_ a: NotchActivity) -> NotchActivity {
         coordinator.isScreenLocked ? a.redactedForLockScreen : a
     }
-    /// Slot esquerdo (brilho) e direito (volume/eventos) — coexistem.
     private var leadingPeek: NotchActivity? { coordinator.leadingActivity.map(lockSafe) }
     private var trailingPeek: NotchActivity? {
         (coordinator.trailingActivity ?? coordinator.ambientActivity).map(lockSafe)
     }
-    private var canExpand: Bool { true }  // abre sempre: mídia, shelf de apps, calendário/clima
+    private var canExpand: Bool { true }
     private var peek: NotchActivity? { trailingPeek ?? leadingPeek }
-    /// Peek TRANSITÓRIO (HUD/evento). A atividade ambiente (timer, gravação,
-    /// VPN…) entra em `trailingPeek` como fallback — mas ela é quem alimenta a
-    /// ilha larga, então precisa ficar de fora aqui.
     private var transientPeek: NotchActivity? { coordinator.trailingActivity ?? coordinator.leadingActivity }
-    /// Conteúdo da ilha larga (F3). `nil` = largura normal. O peek transitório
-    /// tem precedência: HUD continua ganhando da ilha larga.
     private var wideContent: WideIslandContent? {
         guard !expanded, transientPeek == nil, !lockResting,
               WideIslandLayout.isWide(mode: coordinator.config.wideIsland, simulated: simulated)
@@ -101,12 +71,10 @@ struct NotchView: View {
         VStack(spacing: 0) {
             island
                 .task {
-                    // pulso de preview: abre/fecha com os MESMOS springs do hover
                     guard ProcessInfo.processInfo.environment["COVE_PREVIEW_PULSE"] == "1" else { return }
                     while !Task.isCancelled {
                         try? await Task.sleep(for: .seconds(1.5))
                         let opening = !expanded
-                        // medido no Alcove (120fps): abre ~220ms c/ bounce, fecha ~330ms liso
                         withAnimation(opening
                             ? .spring(duration: 0.26, bounce: 0.22)
                             : .spring(duration: 0.34, bounce: 0.0)) {
@@ -116,10 +84,9 @@ struct NotchView: View {
                 }
                 .onHover { over in
                     guard !previewLock, coordinator.config.expandOnHover else { return }
-                    guard !coordinator.isScreenLocked else { return }   // lock: só exibição
-                    // atividade expandida: hover não troca pra droplet nem recolhe
+                    guard !coordinator.isScreenLocked else { return }
                     guard !coordinator.showActivityExpanded else { return }
-                    guard !coordinator.dragActive else { return }   // arraste de arquivo em curso: não recolhe no hover-out
+                    guard !coordinator.dragActive else { return }
                     hoverTask?.cancel()
                     let opening = over && canExpand
                     guard opening != expanded else { return }
@@ -131,8 +98,6 @@ struct NotchView: View {
                             NSHapticFeedbackManager.defaultPerformer
                                 .perform(.alignment, performanceTime: .now)
                         }
-                        // iPhone: abre com bounce, fecha liso
-                        // medido no Alcove (120fps): abre ~220ms c/ bounce, fecha ~330ms liso
                         withAnimation(opening
                             ? .spring(duration: 0.26, bounce: 0.22)
                             : .spring(duration: 0.34, bounce: 0.0)) {
@@ -146,20 +111,15 @@ struct NotchView: View {
         .environment(\.hudStyle, coordinator.config.hudStyle)
         .environment(\.dynamicGlass, coordinator.config.dynamicGlass)
         .environment(\.dynamicGlassTint, coordinator.config.dynamicGlassTint)
-        // a ilha é sempre preta: conteúdo (e o glass) renderiza em dark mesmo com o sistema claro
         .environment(\.colorScheme, .dark)
         .onChange(of: coordinator.expandRequest) {
             guard let req = coordinator.expandRequest, !previewLock,
                   req.targets(displayID: displayID, primary: isPrimary) else { return }
             setExpanded(req.value)
         }
-        // tela bloqueada: CADA ilha recolhe (um `requestExpand(false)` só
-        // miraria a primária) e fica só exibindo — HUDs, asas, bateria.
         .onChange(of: coordinator.isScreenLocked) {
             openLockTask?.cancel()
             guard coordinator.isScreenLocked else {
-                // unlock: `lock.open.fill` por 600 ms, depois recolhe (o
-                // loginwindow já está no fade do sistema)
                 openLockGrace = true
                 openLockTask = Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(600))
@@ -172,9 +132,6 @@ struct NotchView: View {
             hoverTask?.cancel()
             setExpanded(false)
         }
-        // droplet ligado/desligado em Ajustes some da lista de páginas com a
-        // ilha aberta na hora — sem isso ela ficava travada num índice morto
-        // até recolher (item 11 da auditoria).
         .onChange(of: coordinator.config.enabledDroplets) { oldValue, _ in
             let oldPages = Droplet.pages(enabled: oldValue, hasMedia: hasMedia)
             let oldDroplet = page >= 0 && page < oldPages.count ? oldPages[page] : nil
@@ -187,7 +144,6 @@ struct NotchView: View {
             let last = pages.count - 1
             let next = page + d
             if next < 0 || (next > last && d > 0 && page == last) {
-                // subiu acima da 1ª página (ou desceu sem mais páginas): fecha
                 setExpanded(false)
             } else {
                 withAnimation(.spring(duration: 0.3, bounce: 0.18)) { page = min(max(next, 0), last) }
@@ -221,15 +177,12 @@ struct NotchView: View {
         .onDisappear { removeOutsideClickMonitor() }
     }
 
-    /// Springs medidos no Alcove (120fps): abre ~220ms c/ bounce, fecha ~330ms liso.
     private func setExpanded(_ open: Bool) {
         guard open != expanded, !open || canExpand else { return }
-        guard !open || !coordinator.isScreenLocked else { return }   // bloqueada: nunca abre
+        guard !open || !coordinator.isScreenLocked else { return }
         if coordinator.config.hapticFeedback {
             NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
         }
-        // isExpanded ANTES do estado animado: o painel cresce sincronamente (sink no
-        // willSet) e a ilha aberta já nasce dentro dele — sem salto
         coordinator.isExpanded = open
         withAnimation(open ? .spring(duration: 0.26, bounce: 0.22)
                            : .spring(duration: 0.34, bounce: 0.0)) {
@@ -237,10 +190,7 @@ struct NotchView: View {
         }
     }
 
-    /// Ilha dupla (estilo iPhone): mídia tocando + evento → asas continuam na
-    /// ilha principal; brilho vira bolha à ESQUERDA, volume/eventos à DIREITA
-    /// (nunca sobrepõem — cada um tem seu lado, fora da margem do notch).
-    private var dualIsland: Bool { false }  // Alcove: HUD toma a ilha inteira, mesmo com mídia
+    private var dualIsland: Bool { false }
 
     private var openHUD: NotchActivity? {
         guard expanded, let a = coordinator.activity, a.isHUD else { return nil }
@@ -259,40 +209,31 @@ struct NotchView: View {
         }
         .animation(.spring(duration: 0.26, bounce: 0.22), value: openHUD == nil)
         .animation(reduceMotion ? nil : .spring(duration: 0.28, bounce: 0.2), value: expanded)
-        // iPhone/Alcove: a ilha ESTICA com bounce quando o HUD entra, recolhe lisa quando sai
         .animation(reduceMotion ? nil : (leadingPeek != nil
             ? .spring(duration: 0.32, bounce: 0.30) : .spring(duration: 0.26, bounce: 0)), value: leadingPeek)
         .animation(reduceMotion ? nil : (trailingPeek != nil
             ? .spring(duration: 0.32, bounce: 0.30) : .spring(duration: 0.26, bounce: 0)), value: trailingPeek)
-        // ilha larga: mesmos springs do peek, mas por CHAVE estável — o payload
-        // (mm:ss) muda a cada segundo e re-dispararia o spring a cada tick.
         .animation(reduceMotion ? nil : (wideContent != nil
             ? .spring(duration: 0.32, bounce: 0.30) : .spring(duration: 0.26, bounce: 0)),
             value: wideContent?.animationKey)
-        // asas entram com bounce ao dar play e recolhem lisas ao pausar
         .animation(reduceMotion ? nil : (showWings
             ? .spring(duration: 0.32, bounce: 0.30) : .spring(duration: 0.26, bounce: 0)),
             value: showWings)
-        // cadeado da tela de bloqueio: mesmos springs das asas
         .animation(reduceMotion ? nil : (lockResting
             ? .spring(duration: 0.32, bounce: 0.30) : .spring(duration: 0.26, bounce: 0)),
             value: lockResting)
     }
 
-    /// Mais largo que o notch físico → cantos superiores arredondam (senão o
-    /// retângulo "corta seco" contra a barra de menu).
     private var isWiderThanNotch: Bool {
         expanded || (peek != nil && !showWings) || showWings || lockResting || simulated
     }
 
-    /// Altura do card expandido: mídia 175 (+ notch−30 no físico); demais 170 + notch + 6.
     private var expandedHeight: CGFloat {
         (currentDroplet == .media && !coordinator.showActivityExpanded)
             ? 175 + (simulated ? 0 : max(0, notchSize.height - 30))
             : 170 + (simulated ? 0 : notchSize.height + 6)
     }
 
-    /// Flare do topo: 10pt colapsado (medido no print do Alcove), 24 expandido.
     private var flare: CGFloat { expanded ? 24 : 10 }
 
     private var shape: NotchShape {
@@ -318,15 +259,12 @@ struct NotchView: View {
                         }
                     }
                     .padding(.horizontal, flare)
-                    // a página nunca empurra a PageBar pra fora do card: ocupa o que sobra e corta
                     .frame(maxHeight: .infinity)
                     .clipped()
                     .id(coordinator.showActivityExpanded ? "activity"
                         : (coordinator.showActions ? "actions" : "\(currentDroplet)"))
                     .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity),
                                             removal: .move(edge: .top).combined(with: .opacity)))
-                    // grade de Ações rápidas some com a PageBar junto — não faz sentido
-                    // trocar de droplet enquanto ela está por cima.
                     if !coordinator.showActions, !coordinator.showActivityExpanded,
                        pages.count > 1, currentDroplet != .media {
                         PageBar(pages: pages, current: page) { i in
@@ -335,9 +273,7 @@ struct NotchView: View {
                         .padding(.bottom, 6)
                     }
                 }
-                .frame(height: expandedHeight)   // orçamento fechado: página + barra nunca passam do card
-                // Mídia: barra sobreposta no rodapé (não empurra o layout do card, que é fixo);
-                // mídia "solo" (1 página) fica sem barra — layout limpo.
+                .frame(height: expandedHeight)
                 .overlay(alignment: .bottom) {
                     if !coordinator.showActions, !coordinator.showActivityExpanded,
                        pages.count > 1, currentDroplet == .media {
@@ -348,30 +284,25 @@ struct NotchView: View {
                     }
                 }
             } else if let p = peek, isTrackPeek(p), showWings {
-                // troca de faixa (Alcove): asa esquerda cresce com título+artista ao lado do artwork
                 MediaWings(media: media, waveform: coordinator.waveform, morph: morph,
                            height: notchSize.height, titled: true)
                     .padding(.horizontal, flare)
                     .transition(.blurReplace)
             } else if let w = wideContent {
-                // ilha larga (F3): mais informação porque há largura sobrando
                 WideIslandView(content: w, media: media, waveform: coordinator.waveform, morph: morph,
                                height: notchSize.height, notchWidth: notchSize.width, simulated: simulated)
                     .padding(.horizontal, flare)
                     .transition(.blurReplace)
             } else if let p = peek {
-                // HUD/evento substitui as asas enquanto dura (Alcove) — nunca comprime
                 PeekView(activity: p, notchWidth: notchSize.width, height: notchSize.height)
                     .environment(\.hudStyle, HUDStyleResolver.style(
                         for: p.kindKey, styles: coordinator.config.hudStyles, fallback: coordinator.config.hudStyle))
                     .padding(.horizontal, flare)
-                    // conteúdo nasce junto com o esticão, levemente atrasado (blur + escala)
                     .transition(AnyTransition.asymmetric(
                         insertion: AnyTransition(.blurReplace).combined(with: .scale(scale: 0.85))
                             .animation(.spring(duration: 0.3, bounce: 0.2).delay(0.05)),
                         removal: AnyTransition(.blurReplace).animation(.easeOut(duration: 0.15))))
             } else if lockResting {
-                // tela de bloqueio (Alcove): cadeado branco na asa esquerda, direita vazia
                 LockWing(open: !coordinator.isScreenLocked, height: notchSize.height)
                     .padding(.horizontal, flare)
                     .transition(.blurReplace)
@@ -382,11 +313,9 @@ struct NotchView: View {
                     .transition(.blurReplace)
             }
         }
-        // no notch físico o topo do card é hardware: 170pt de conteúdo ficam ABAIXO dele
         .frame(width: currentWidth + flare * 2, height: expanded ? expandedHeight : notchSize.height)
-        .clipShape(shape)  // nada vaza da forma durante a animação de abertura
+        .clipShape(shape)
         .compositingGroup()
-        // sombra mais presente (0.45/18 lia quase nada sobre fundo claro — medido: 236→197 em 20pt)
         .shadow(color: expanded ? .black.opacity(0.6) : .clear, radius: expanded ? 22 : 0, y: expanded ? 10 : 0)
         .contentShape(shape)
         .background(GeometryReader { g in
@@ -400,11 +329,6 @@ struct NotchView: View {
                 }
                 .onDisappear { coordinator.islandFrames[displayID] = nil }
         })
-        // Toque longo ≥0,45 s. O alvo é a ilha FECHADA, mas com
-        // `expandOnHover` ligado (padrão) ela já abriu sozinha aos 0,1 s antes
-        // de o gesto terminar — por isso o que vale é o estado no INÍCIO da
-        // pressão (`pressStartedOnActivity`), e a ilha aberta por hover
-        // (numa página de droplet) também aceita o gesto.
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.45)
                 .onChanged { _ in
@@ -422,10 +346,8 @@ struct NotchView: View {
                 }
         )
         .onTapGesture {
-            pressStartedOnActivity = false   // gesto cancelado por arraste não deixa estado stale (#4)
-            // atividade expandida aberta: clique dentro do card só fecha o timer de 6s
+            pressStartedOnActivity = false
             if coordinator.showActivityExpanded { coordinator.cancelActivityExpandedDismiss(); return }
-            // clique: evento abre o app dele; gravação abre as ferramentas; ilha colapsada abre o player
             if let a = peek, !expanded {
                 if case .event = a { NotchActions.openCalendar(); return }
                 if case .eventCountdown(_, _, let meetingURL) = a {
@@ -444,7 +366,7 @@ struct NotchView: View {
     }
 
     @ViewBuilder private func dropletPage(_ d: Droplet) -> some View {
-        let top = simulated ? 4 : notchSize.height + 6   // hardware cobre notchSize.height; +6 de respiro
+        let top = simulated ? 4 : notchSize.height + 6
         switch d {
         case .media: ExpandedMediaCard(coordinator: coordinator, morph: morph, notchTop: top)
         case .apps: AppsPage(coordinator: coordinator, notchTop: top)
@@ -464,15 +386,11 @@ struct NotchView: View {
         }
     }
 
-    /// Página "ativa" pro coordinator: `nil` com a ilha fechada OU com a
-    /// atividade expandida por cima — senão a página de mídia entra em cena
-    /// sem gesto e dispara TCC de áudio/AppleScript.
     private var activePageDroplet: Droplet? {
         guard expanded, !coordinator.showActivityExpanded else { return nil }
         return currentDroplet
     }
 
-    /// Clique FORA do app fecha a atividade expandida (o hover-out não fecha).
     private func updateOutsideClickMonitor() {
         if coordinator.showActivityExpanded {
             guard outsideClickMonitor == nil else { return }
@@ -503,16 +421,11 @@ struct NotchView: View {
             return (showWings ? notchSize.width + 76 : notchSize.width) + WideIslandLayout.extraWidth
         }
         if peek != nil { return notchSize.width + 2 * PeekView.wing }
-        if lockResting { return notchSize.width + 76 }   // Alcove: tamanho compacto das asas
+        if lockResting { return notchSize.width + 76 }
         return showWings ? notchSize.width + 76 : notchSize.width
     }
 }
 
-// MARK: - Asa da tela de bloqueio
-
-/// Ilha fechada no lock (Alcove): `lock.fill` branco na asa ESQUERDA (mesma
-/// anatomia do `PeekIcon`: 13 pt semibold, padding 12), asa direita vazia.
-/// `open` = 600 ms depois do unlock (`lock.open.fill`).
 private struct LockWing: View {
     let open: Bool
     let height: CGFloat
@@ -530,11 +443,6 @@ private struct LockWing: View {
     }
 }
 
-// MARK: - Ilha larga (F3)
-
-/// Ilha FECHADA no estilo largo: mídia com título/artista, ou a atividade
-/// persistente (ícone + rótulo à esquerda, valor tabular à direita) — mesma
-/// anatomia do `PeekTrailing`.
 private struct WideIslandView: View {
     let content: WideIslandContent
     @ObservedObject var media: MediaRemoteService
@@ -555,7 +463,6 @@ private struct WideIslandView: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
-                // no notch FÍSICO o miolo é hardware: nada de texto por baixo
                 Spacer(minLength: simulated ? 0 : notchWidth)
                 value(a)
             }
@@ -583,8 +490,6 @@ private struct WideIslandView: View {
             .foregroundStyle(WideIslandView.color(r.tint))
     }
 
-    /// `mm:ss`/`hh:mm` vivo: vpnSession/highAlert/eventCountdown têm payload
-    /// estático (uma `Date`), então o relógio vem do `TimelineView`.
     @ViewBuilder private func value(_ a: NotchActivity) -> some View {
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
             Text(WideIslandView.valueText(a, now: ctx.date))
@@ -614,14 +519,12 @@ private struct WideIslandView: View {
     }
 }
 
-// MARK: - Asas de mídia (colapsado tocando)
-
 private struct MediaWings: View {
     @ObservedObject var media: MediaRemoteService
     var waveform: WaveformService?
     let morph: Namespace.ID
     let height: CGFloat
-    var titled = false   // troca de faixa: título/artista ao lado do artwork
+    var titled = false
 
     var body: some View {
         HStack(spacing: 8) {
@@ -661,8 +564,6 @@ private struct MediaWings: View {
     }
 }
 
-/// Glifo equalizador do Alcove: `| | · | |` — barras simétricas com ponto no
-/// centro. Tocando (sem tap de áudio): pulso suave e orgânico; pausado: estático.
 private struct EqualizerGlyph: View {
     let tint: Color
     let animated: Bool
@@ -672,7 +573,6 @@ private struct EqualizerGlyph: View {
             let t = ctx.date.timeIntervalSinceReferenceDate
             HStack(spacing: 2.5) {
                 ForEach(0..<5, id: \.self) { i in
-                    // pausado: vira uma linha de pontinhos (Alcove/iPhone)
                     let base: CGFloat = animated ? [11, 7, 3, 7, 11][i] : 2.5
                     let wobble: CGFloat = animated
                         ? CGFloat(sin(t * (5 + Double(i) * 1.7) + Double(i))) * 3 : 0
@@ -687,14 +587,10 @@ private struct EqualizerGlyph: View {
     }
 }
 
-/// Barras de waveform dirigidas pelo áudio REAL do sistema (process tap).
-/// Estilo iPhone: simétricas do centro (centro = mais recente/alto), spring
-/// com bounce por barra — movimento orgânico, não mecânico.
 private struct LiveWaveform: View {
     @ObservedObject var waveform: WaveformService
     var tint: Color = .white
 
-    // ordem visual: bordas = níveis antigos, centro = nível atual
     private let order = [4, 2, 0, 1, 3]
 
     var body: some View {
@@ -713,15 +609,11 @@ private struct LiveWaveform: View {
     }
 }
 
-// MARK: - Peek transitório (HUD/eventos, estilo Dynamic Island)
-
 private struct PeekView: View {
     let activity: NotchActivity
     let notchWidth: CGFloat
     let height: CGFloat
 
-    /// Largura de cada asa: cabe "Brilho" + slider 96 + número. O miolo fica
-    /// exatamente sob o notch físico — nada é desenhado atrás dele.
     static let wing: CGFloat = 150
 
     var body: some View {
@@ -964,8 +856,6 @@ struct PeekTrailing: View {
     }
 }
 
-/// Countdown de calendário: ring de progresso + rótulo "em N min"/"agora" —
-/// compartilhado entre o peek colapsado e a linha do expandido.
 enum EventCountdown {
     static func minutesLabel(_ remaining: TimeInterval) -> Int {
         max(Int(remaining / 60) + (remaining.truncatingRemainder(dividingBy: 60) > 0 ? 1 : 0), 0)
@@ -983,7 +873,6 @@ enum EventCountdown {
         }
     }
 
-    /// Linha compacta pro expandido (mídia ou apps): título + tempo + botão de ação.
     struct Row: View {
         let title: String
         let start: Date
@@ -1023,12 +912,10 @@ enum EventCountdown {
     }
 }
 
-/// Estilos do Alcove: White (padrão), Accent (cor de destaque do sistema),
-/// Glow (brilho difuso ao redor do preenchimento).
 private struct LevelBar: View {
     let level: Float
     let tint: Color
-    var width: CGFloat? = 96   // nil = ocupa a largura do pai
+    var width: CGFloat? = 96
     @Environment(\.hudStyle) private var style
 
     private var fill: Color { style == "accent" ? Color(nsColor: .controlAccentColor) : tint }
@@ -1047,8 +934,6 @@ private struct LevelBar: View {
     }
 }
 
-// MARK: - Card expandido (mídia + seeker)
-
 private struct ExpandedMediaCard: View {
     @ObservedObject var coordinator: NotchCoordinator
     let morph: Namespace.ID
@@ -1064,8 +949,6 @@ private struct ExpandedMediaCard: View {
         return nil
     }
 
-    // medidas do print do Alcove (390×175): artwork 50 no canto, AO LADO do notch;
-    // título/artista alinhados pela base do artwork; seeker a 93pt; controles a 135pt.
     private var motionArtActive: Bool {
         coordinator.config.motionArt && media.nowPlaying.isPlaying && (coordinator.waveform?.running ?? false)
     }
@@ -1088,7 +971,6 @@ private struct ExpandedMediaCard: View {
                 HStack(alignment: .top, spacing: 14) {
                     ArtworkThumb(media: media, size: 50)
                         .matchedGeometryEffect(id: "artwork", in: morph)
-                    // texto começa ABAIXO do notch físico (artwork fica ao lado dele)
                     VStack(alignment: .leading, spacing: 2) {
                         MarqueeText(text: media.nowPlaying.title,
                                     font: .system(size: 15, weight: .semibold))
@@ -1127,8 +1009,6 @@ private struct ExpandedMediaCard: View {
                                       size: 26) { media.send(.togglePlayPause) }
                         ControlButton(symbol: "forward.fill", size: 20) { media.send(.nextTrack) }
                     }
-                    // laterais espelhadas: shuffle/repeat/favorito à esquerda, saída à direita —
-                    // o transporte fica centrado e nada encosta no ⏭ (feedback do dono)
                     HStack {
                         if coordinator.playerBridge.isAvailable {
                             PlayerControlsRow(bridge: coordinator.playerBridge)
@@ -1141,7 +1021,6 @@ private struct ExpandedMediaCard: View {
                 .frame(height: 44)
                 .padding(.top, 6)
             }
-            // "······" na altura do título, encostado à direita como no Alcove
             Button {
                 NotchActions.popMenu([
                     ("Mostrar no app", { NotchActions.openPlayer() }),
@@ -1175,7 +1054,6 @@ private struct ExpandedMediaCard: View {
     }
 }
 
-/// Pílula flutuante ABAIXO da ilha aberta (volume/brilho) — não mexe no card.
 struct FloatingHUDPill: View {
     let activity: NotchActivity
 
@@ -1184,7 +1062,6 @@ struct FloatingHUDPill: View {
             .padding(.horizontal, 14)
             .frame(width: 250, height: 36)
         if #available(macOS 26, *) {
-            // Liquid Glass nativo: refrata o que está atrás (wallpaper/janelas)
             GlassEffectContainer {
                 row.glassEffect(.regular.tint(.black.opacity(0.25)), in: Capsule(style: .continuous))
             }
@@ -1198,7 +1075,6 @@ struct FloatingHUDPill: View {
     }
 }
 
-/// HUD dentro do card aberto: ícone · slider ocupando a largura · valor.
 struct ExpandedHUDRow: View {
     let activity: NotchActivity
 
@@ -1236,8 +1112,6 @@ struct ExpandedHUDRow: View {
     }
 }
 
-/// Seletor de saída (Alcove: ícone à direita dos controles). Clique lista as
-/// saídas do CoreAudio — MacBook, AirPods, AirPlay (iPhone/HomePod) — e troca.
 private struct OutputPicker: View {
     @ObservedObject var outputs: OutputDevices
 
@@ -1258,7 +1132,6 @@ private struct OutputPicker: View {
     }
 }
 
-/// Apps fixados na ilha (Ajustes › Apps): ícone → abre o app.
 private struct PinnedAppsRow: View {
     let bundleIDs: [String]
     var size: CGFloat = 30
@@ -1283,7 +1156,6 @@ private struct PinnedAppsRow: View {
     }
 }
 
-/// Calendário de verdade: mês em grade, hoje marcado, próximos eventos ao lado.
 struct CalendarWidget: View {
     @ObservedObject var calendar: CalendarService
     var firstWeekday: Int = Calendar.current.firstWeekday
@@ -1354,7 +1226,6 @@ struct CalendarWidget: View {
     }
 }
 
-/// Popover de edição de um evento existente — título, início/fim, Salvar/Excluir.
 private struct EditEventPopover: View {
     @ObservedObject var calendar: CalendarService
     let event: CalendarService.UpcomingEvent
@@ -1409,8 +1280,6 @@ private struct EditEventPopover: View {
     }
 }
 
-/// Preview de mensagens/notificações do app (WhatsApp, Mensagens, Mail…)
-/// via espelho do usernoted — exige Acesso Total ao Disco.
 struct NotificationsWidget: View {
     let bundleID: String
     @ObservedObject var mirror: NotificationMirror
@@ -1454,8 +1323,6 @@ struct NotificationsWidget: View {
     }
 }
 
-/// Coluna de calendário do expandido (Alcove): QUA em vermelho, 9 grande,
-/// pill roxo com o próximo evento.
 private struct CalendarColumn: View {
     @ObservedObject var calendar: CalendarService
     let enabled: Bool
@@ -1490,8 +1357,6 @@ private struct CalendarColumn: View {
     }
 }
 
-/// Rodapé do expandido: clima + próximo evento (estilo Alcove).
-/// Observa weather/calendar DIRETO — @Published aninhado não propaga pelo coordinator.
 private struct InfoChipsRow: View {
     @ObservedObject var coordinator: NotchCoordinator
     @ObservedObject var weather: WeatherService
@@ -1505,7 +1370,6 @@ private struct InfoChipsRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            // clima só preenche o rodapé quando não há evento (print do dono)
             if coordinator.config.showWeather, calendar.next == nil, let w = weather.current {
                 Label("\(Int(w.tempC.rounded()))°", systemImage: w.symbol)
                     .font(.system(size: 11, weight: .medium))
@@ -1527,8 +1391,6 @@ private struct InfoChipsRow: View {
     }
 }
 
-/// Progresso da faixa: interpola localmente enquanto toca (o adapter só manda
-/// elapsed em mudanças) — TimelineView redesenha por segundo.
 private struct SeekerBar: View {
     @ObservedObject var media: MediaRemoteService
     @GestureState private var dragFraction: Double?
@@ -1574,14 +1436,11 @@ private struct SeekerBar: View {
     }
 }
 
-/// Hover estilo iPhone/Alcove: cresce, ganha fundo translúcido, tique háptico
-/// leve ao entrar. Só visual — sem gesto próprio (não rouba o clique do Button).
 struct NotchHover: ViewModifier {
     @State private var over = false
 
     func body(content: Content) -> some View {
         content
-            // realce cobre a ÁREA do controle (não o glifo): retângulo arredondado, sem deslocar
             .background(Circle().fill(.white.opacity(over ? 0.13 : 0)))
             .animation(.smooth(duration: 0.16), value: over)
             .onHover { o in
@@ -1592,7 +1451,6 @@ struct NotchHover: ViewModifier {
     }
 }
 
-/// Botões da ilha: pressed encolhe (0.9) com spring curto, hover pelo NotchHover.
 struct NotchButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -1625,9 +1483,6 @@ private struct ControlButton: View {
     }
 }
 
-/// Trio shuffle/repeat/favoritar do card de mídia — só aparece com Music.app/
-/// Spotify detectado via `PlayerBridge` (ScriptingBridge); "fila" não entra
-/// (sem API). Botão de favoritar some quando o player não suporta (Spotify).
 private struct PlayerControlsRow: View {
     @ObservedObject var bridge: PlayerBridge
 
@@ -1680,7 +1535,6 @@ extension EnvironmentValues {
 }
 
 enum NotchActions {
-    /// Menu AppKit no cursor — sem o highlight do Menu do SwiftUI (que deforma o hover).
     @MainActor static func popMenu(_ items: [(String, () -> Void)]) {
         let menu = NSMenu()
         for (title, action) in items {
@@ -1690,8 +1544,6 @@ enum NotchActions {
             item.representedObject = target
             menu.addItem(item)
         }
-        // painel vive no nível screenSaver (1000) e o menu no popUpMenu (101): abaixa
-        // os painéis enquanto o menu está aberto (popUp é síncrono), senão ele nasce por baixo
         NotchPanelController.current?.pushLoweredLevel()
         menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
         NotchPanelController.current?.popLoweredLevel()
@@ -1712,8 +1564,6 @@ final class MenuTarget: NSObject {
     @objc func fire(_ sender: Any?) { action() }
 }
 
-/// Título rolando quando não cabe (NSMarqueeTextView do Alcove): mede o texto,
-/// se passar da largura anima o offset num loop com pausa nas pontas.
 private struct MarqueeText: View {
     let text: String
     let font: Font
@@ -1748,7 +1598,6 @@ private struct MarqueeText: View {
                 Color.black
             }
         }
-        // dispara só quando as DUAS medidas existem; troca de faixa reinicia
         .onChange(of: overflow, initial: true) { restart() }
         .onDisappear { loopTask?.cancel() }
     }
@@ -1757,7 +1606,7 @@ private struct MarqueeText: View {
         loopTask?.cancel()
         offset = 0
         guard overflow > 0 else { return }
-        let d = Double(overflow) / 28  // ~28pt/s, ritmo do Alcove
+        let d = Double(overflow) / 28
         let target = overflow
         loopTask = Task { @MainActor in
             while !Task.isCancelled {
@@ -1786,7 +1635,6 @@ private struct ArtworkThumb: View {
                 .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
                     .stroke(.white.opacity(0.18), lineWidth: 0.5))
-                // troca de faixa: artwork gira (flip) como no Alcove
                 .rotation3DEffect(.degrees(flip), axis: (x: 0, y: 1, z: 0))
                 .onChange(of: media.nowPlaying.title) {
                     withAnimation(.spring(duration: 0.55, bounce: 0.15)) { flip += 360 }
@@ -1804,9 +1652,6 @@ private struct ArtworkThumb: View {
     }
 }
 
-/// Barra de páginas (Droppy #7/#8): um ícone por droplet, atual em destaque; sempre
-/// visível no expandido quando há >1 página. Ícones em vez de pontos: o usuário
-/// sabe pra onde o gesto leva antes de deslizar.
 private struct PageBar: View {
     let pages: [Droplet]
     let current: Int

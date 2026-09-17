@@ -1,7 +1,6 @@
 import CoreGraphics
 import Foundation
 
-/// Ferramenta de anotação do editor de captura.
 enum AnnotationTool: String, Codable, CaseIterable {
     case arrow
     case rect
@@ -9,7 +8,6 @@ enum AnnotationTool: String, Codable, CaseIterable {
     case badge
 }
 
-/// Uma anotação desenhada sobre a captura.
 struct Annotation: Identifiable, Equatable {
     let id: UUID
     var tool: AnnotationTool
@@ -28,15 +26,12 @@ struct Annotation: Identifiable, Equatable {
     }
 }
 
-/// Fundo aplicado atrás da captura no export.
 enum BackgroundStyle: Equatable {
     case none
     case solid(String)
     case gradient(String)
 }
 
-/// Documento puro do editor: anotações + fundo + padding.
-/// Numera badges automaticamente (1, 2, 3…) e renumera ao desfazer.
 struct AnnotationDocument: Equatable {
     var annotations: [Annotation] = []
     var background: BackgroundStyle = .none
@@ -69,16 +64,12 @@ struct AnnotationDocument: Equatable {
         }
     }
 
-    /// Fator de escala pra traço/badge/seta ao renderizar em `exportWidth`
-    /// (ex.: `image.size.width`) a partir do que foi desenhado numa prévia
-    /// de `previewWidth`. Sempre ≥ 1 — a prévia nunca é maior que a export.
     static func strokeScale(exportWidth: CGFloat, previewWidth: CGFloat) -> CGFloat {
         guard previewWidth > 0 else { return 1 }
         return max(exportWidth / previewWidth, 1)
     }
 }
 
-/// Gera um nome de arquivo de export que não sobrescreve um já existente.
 enum ExportNaming {
     static func uniqueExportName(base: String, existing: (String) -> Bool) -> String {
         let plain = "\(base)-editado.png"

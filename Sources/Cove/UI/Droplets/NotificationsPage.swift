@@ -1,14 +1,11 @@
 import SwiftUI
 
-/// Droplet de notificações — histórico recente de todos os apps (via
-/// `NotificationMirror.recent`), buscável e agrupado por app.
 struct NotificationsPage: View {
     @ObservedObject var mirror: NotificationMirror
     let notchTop: CGFloat
     @State private var query = ""
     @FocusState private var searchFocused: Bool
 
-    // T34 — responder iMessage direto do droplet, via ScriptingBridge (Messages.app).
     private let messagesBridge = MessagesBridge()
     @State private var replyingID: Int?
     @State private var replyText = ""
@@ -146,9 +143,6 @@ struct NotificationsPage: View {
         }
     }
 
-    /// T34 — campo inline de resposta pra uma notificação do Mensagens. Se o
-    /// app não está rodando, oferece "Abrir Mensagens" em vez do campo (nunca
-    /// auto-lança via ScriptingBridge).
     @ViewBuilder
     private func replyField(for n: NotificationMirror.Note) -> some View {
         if !messagesBridge.isAvailable {
@@ -181,8 +175,6 @@ struct NotificationsPage: View {
         replyBanner = nil
     }
 
-    /// Envia a resposta via `MessagesBridge` — nunca toca `chat.db`, só a
-    /// notificação já espelhada define o destinatário (nome ou handle).
     private func send(_ n: NotificationMirror.Note) {
         let text = replyText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }

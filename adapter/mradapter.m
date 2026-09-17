@@ -1,10 +1,3 @@
-// Adapter MediaRemote — carregado dentro do /usr/bin/perl (host assinado pela
-// Apple, passa o gate do macOS 15.4+). O app fala com ele por pipes:
-//   stdout: 1 linha JSON por mudança de now playing (título, artista, estado,
-//           artwork base64 quando muda)
-//   stdin:  "cmd <n>" → MRMediaRemoteSendCommand(n)
-// Chamado via DynaLoader::dl_install_xsub (NUNCA em constructor — lock do dyld
-// deadlocka a resposta XPC; provado ao vivo).
 #import <Foundation/Foundation.h>
 #import <dlfcn.h>
 
@@ -66,7 +59,6 @@ void adapter_run(void *a, void *b) {
                     usingBlock:^(NSNotification *n) { emit(); }];
     }
 
-    // comandos pelo stdin em thread própria
     dispatch_async(dispatch_get_global_queue(0, 0), ^{
         char line[128];
         while (fgets(line, sizeof line, stdin)) {
@@ -77,7 +69,7 @@ void adapter_run(void *a, void *b) {
             else if (sscanf(line, "seek %lf", &t) == 1 && setElapsed)
                 dispatch_async(dispatch_get_main_queue(), ^{ setElapsed(t); emit(); });
         }
-        exit(0);  // app fechou o pipe → morre junto
+        exit(0);
     });
 
     emit();

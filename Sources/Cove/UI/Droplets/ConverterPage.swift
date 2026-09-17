@@ -2,9 +2,6 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Droplet Converter — dropzone/"Escolher…" detecta os presets pela extensão
-/// (`ConvertPreset.presets(forExtension:)`), converte on-device (AVFoundation/PDFKit)
-/// um job por vez. Office fica de fora.
 struct ConverterPage: View {
     @ObservedObject var converter: Converter
     @ObservedObject var coordinator: NotchCoordinator
@@ -46,7 +43,6 @@ struct ConverterPage: View {
     private var dropZone: some View {
         Group {
             if jobsEmpty {
-                // sem jobs: a zona ocupa a página toda, conteúdo centrado (proporcional)
                 VStack(spacing: 8) {
                     Image(systemName: "arrow.down.doc").font(.system(size: 26)).foregroundStyle(.white.opacity(0.7))
                     Text(pending.isEmpty ? "Arraste arquivos pra cá" : "\(pending.count) arquivo(s) selecionado(s)")
@@ -75,7 +71,6 @@ struct ConverterPage: View {
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(.white.opacity(coordinator.dragActive ? 0.4 : 0.15), style: StrokeStyle(lineWidth: 1, dash: [4]))
         )
-        // drop chega pelo DropHostView (AppKit) → coordinator.handleFileDrop → este pedido
         .onChange(of: coordinator.converterDropRequest) { _, req in
             if let urls = req?.value { accept(urls) }
         }

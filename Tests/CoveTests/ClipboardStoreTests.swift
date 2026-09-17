@@ -3,8 +3,6 @@ import AppKit
 @testable import Cove
 
 @MainActor final class ClipboardStoreTests: XCTestCase {
-    /// Storage temporário único por teste + limpeza garantida no teardown
-    /// (arquivo json escrito por `save()`, mesmo quando o teste falha no meio).
     private func tempStorage(_ prefix: String = "clip") -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(prefix)-\(UUID()).json")
         addTeardownBlock { try? FileManager.default.removeItem(at: url) }
@@ -105,7 +103,7 @@ import AppKit
 
     func testImageEntryNotCreatedWhenWriteFails() async {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("clip-badclips-\(UUID())")
-        try? Data().write(to: tmp) // arquivo, não diretório — write dentro dele falha
+        try? Data().write(to: tmp)
         addTeardownBlock { try? FileManager.default.removeItem(at: tmp) }
         let s = ClipboardStore(storage: tempStorage(), clipsDirectory: tmp)
         let image = NSImage(size: NSSize(width: 4, height: 4))
@@ -125,33 +123,26 @@ import AppKit
         XCTAssertFalse(s.entries.contains { $0.text == "old" })
     }
 
-    // MARK: - #1: acknowledgeOwnWrite / ingestIfChanged
-    //
-    // Prova o núcleo do fix de "clipboard transiente": um poll cujo changeCount
-    // já foi visto (seja porque nada mudou, seja porque a própria escrita já
-    // foi reconhecida) não reingere. `ingestIfChanged(pasteboard:)` é o ponto
-    // de entrada testável do poll real (que sempre passa `NSPasteboard.general`).
-
     func testIngestIfChangedSkipsWhenChangeCountAlreadySeen() {
         let s = ClipboardStore(storage: tempStorage())
         let pb = NSPasteboard(name: NSPasteboard.Name("cove-test-\(UUID())"))
         pb.clearContents(); pb.setString("externo", forType: .string)
 
-        s.ingestIfChanged(pasteboard: pb) // 1ª leitura: changeCount novo → ingere
+        s.ingestIfChanged(pasteboard: pb)
         XCTAssertEqual(s.entries.map(\.text), ["externo"])
 
-        s.ingestIfChanged(pasteboard: pb) // changeCount igual ao último visto → no-op
+        s.ingestIfChanged(pasteboard: pb)
         XCTAssertEqual(s.entries.count, 1, "poll repetido sem novo changeCount não deve duplicar")
     }
 
     func testAcknowledgeOwnWriteMakesNextGeneralPollANoOp() {
         let s = ClipboardStore(storage: tempStorage())
         let pb = NSPasteboard.general
-        let originalContents = pb.string(forType: .string) // preserva o clipboard real do host
+        let originalContents = pb.string(forType: .string)
         defer { pb.clearContents(); if let originalContents { pb.setString(originalContents, forType: .string) } }
 
         pb.clearContents(); pb.setString("escrita-propria", forType: .string)
-        s.acknowledgeOwnWrite() // simula o hook chamado logo após a escrita própria
+        s.acknowledgeOwnWrite()
         s.ingestIfChanged(pasteboard: pb)
         XCTAssertTrue(s.entries.isEmpty, "acknowledgeOwnWrite deve blindar a própria escrita contra reingestão")
     }

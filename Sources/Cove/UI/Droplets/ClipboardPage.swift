@@ -1,7 +1,6 @@
 import SwiftUI
 
 private extension Color {
-    /// `#RGB`/`#RRGGBB`/`#RRGGBBAA` já normalizado (vem de `ClipboardStore.hexColor`).
     init?(hex: String) {
         var hex = hex; if hex.hasPrefix("#") { hex.removeFirst() }
         if hex.count == 3 { hex = hex.map { "\($0)\($0)" }.joined() }
@@ -176,7 +175,6 @@ struct ClipboardPage: View {
         searchFocused = true
     }
 
-    /// ids-alvo pra ações de seleção múltipla: usa `selection.selected` se não-vazio, senão o foco (`selectedID`).
     private func targetIDs() -> Set<UUID> {
         if !selection.selected.isEmpty { return selection.selected }
         if let id = selectedID { return [id] }
@@ -194,8 +192,6 @@ struct ClipboardPage: View {
         selectedID = remaining.isEmpty ? nil : remaining[min(i, remaining.count - 1)].id
     }
 
-    /// ⌘C: copia a seleção múltipla — texto (junta com `\n`) ou arquivos (`writeObjects`).
-    /// Um único item selecionado cai no `performCopy` normal (mantém o feedback "Copiado").
     private func copySelected() {
         let ids = targetIDs()
         guard ids.count > 1 else {

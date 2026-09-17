@@ -1,8 +1,5 @@
 import Foundation
 
-/// Índice puro de busca dos Ajustes: cada linha (título de pane + palavras-
-/// chave dos toggles daquele pane) aponta pro `pane` (raw value de `Pane`)
-/// que deve ficar visível na sidebar quando o texto bate.
 struct SettingsSearchIndex {
     struct Entry {
         let pane: String
@@ -12,8 +9,6 @@ struct SettingsSearchIndex {
 
     let entries: [Entry]
 
-    /// Retorna os `pane` (raw values) que batem com `query`, sem repetir,
-    /// na ordem em que aparecem no índice. Query vazia → todos os panes.
     func matches(_ query: String) -> [String] {
         let q = Self.normalize(query)
         guard !q.isEmpty else {
@@ -40,8 +35,6 @@ struct SettingsSearchIndex {
 }
 
 extension SettingsSearchIndex {
-    /// Índice real dos Ajustes do Cove — mantido a mão em paralelo aos panes
-    /// (`SettingsWindow.swift`). Regenerado da lista real de linhas de cada pane.
     static let coveNotch = SettingsSearchIndex(entries: [
         Entry(pane: "Geral", title: "Geral", keywords: [
             "login", "captura", "editor", "hover", "gesto", "haptico",

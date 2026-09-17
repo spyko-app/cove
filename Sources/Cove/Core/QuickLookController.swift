@@ -1,17 +1,6 @@
 import AppKit
 import QuickLookUI
 
-/// Controlador do `QLPreviewPanel` pra pré-visualizar um resultado da busca
-/// sem sair da ilha. Implementa o protocolo de controle de painel do
-/// QuickLook (`acceptsPreviewPanelControl`/`begin`/`end`) como um `NSResponder`
-/// próprio — é ele quem instala `dataSource`/`delegate` e devolve o painel
-/// pro nível certo, em vez de depender da cadeia de responders da janela.
-///
-/// O painel do notch vive no nível `.screenSaver` (`NotchPanel.swift:214`,
-/// mesmo truque de `NotchActions.popMenu`); o `QLPreviewPanel` nasce num
-/// nível mais baixo e ficaria atrás da ilha se não abaixássemos os painéis
-/// enquanto o preview está aberto — restaura ao fechar (`willCloseNotification`
-/// no painel compartilhado, e também em `dismiss()`).
 @MainActor
 final class QuickLookController: NSResponder, QLPreviewPanelDataSource, QLPreviewPanelDelegate {
     static let shared = QuickLookController()
@@ -46,8 +35,6 @@ final class QuickLookController: NSResponder, QLPreviewPanelDataSource, QLPrevie
         endPreviewPanelControl(panel)
     }
 
-    // MARK: - QLPreviewPanelController (categoria em NSResponder)
-
     override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool {
         true
     }
@@ -70,17 +57,11 @@ final class QuickLookController: NSResponder, QLPreviewPanelDataSource, QLPrevie
     }
 
     private func restorePanelLevel() {
-        // `closeObserver` como guarda de idempotência: willClose e
-        // endPreviewPanelControl podem chamar isto duas vezes pro mesmo
-        // painel — o contador de pushLoweredLevel/popLoweredLevel não é
-        // tolerante a chamada dupla como `setPanelsLevel` direto era.
         guard let closeObserver else { return }
         NotificationCenter.default.removeObserver(closeObserver)
         self.closeObserver = nil
         NotchPanelController.current?.popLoweredLevel()
     }
-
-    // MARK: - QLPreviewPanelDataSource / Delegate
 
     nonisolated func numberOfPreviewItems(in panel: QLPreviewPanel!) -> Int {
         MainActor.assumeIsolated { url == nil ? 0 : 1 }
@@ -90,8 +71,6 @@ final class QuickLookController: NSResponder, QLPreviewPanelDataSource, QLPrevie
         MainActor.assumeIsolated { url as NSURL? }
     }
 
-    /// Sem frame de origem conhecido (linha da lista SwiftUI não expõe rect
-    /// de tela facilmente) — `.zero` faz o painel abrir com fade simples.
     nonisolated func previewPanel(_ panel: QLPreviewPanel!, sourceFrameOnScreenFor item: QLPreviewItem!) -> NSRect {
         .zero
     }

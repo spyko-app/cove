@@ -5,10 +5,6 @@ import EventKit
 import Foundation
 import Speech
 
-/// Estado assíncrono das permissões do sistema, pro tour de onboarding.
-/// Nunca bloqueia a main thread: cada checagem roda em `Task.detached` e só
-/// publica o resultado de volta na main actor. Pedir a permissão em si
-/// (accessibility, calendário) continua uma ação explícita do usuário.
 @MainActor
 final class PermissionState: ObservableObject {
     @Published private(set) var accessibility = false
@@ -17,11 +13,9 @@ final class PermissionState: ObservableObject {
     @Published private(set) var microphone = false
     @Published private(set) var speech = false
     @Published private(set) var notifications = false
-    /// Não têm checagem TCC pública — refletem só a ação local do usuário nesta sessão.
     @Published var audioCapture = false
     @Published var bluetooth = false
 
-    /// Reavalia todas as permissões sem travar a UI.
     func refresh(notificationsAvailable: Bool) async {
         notifications = notificationsAvailable
 
@@ -38,7 +32,6 @@ final class PermissionState: ObservableObject {
         speech = await sp
     }
 
-    /// "3 de 6 concedidas" — puro, sem estado do objeto, fácil de testar.
     nonisolated static func summary(_ states: [String: Bool]) -> String {
         let total = states.count
         let granted = states.values.filter { $0 }.count

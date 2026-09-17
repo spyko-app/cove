@@ -1,6 +1,5 @@
 import Foundation
 
-/// Presets de conversão do droplet Converter. Pura — sem I/O, fácil de testar.
 enum ConvertPreset: String, CaseIterable {
     case mp4H264
     case m4aAAC
@@ -39,7 +38,6 @@ enum ConvertPreset: String, CaseIterable {
     private static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "heic", "tiff", "gif"]
     private static let pdfExtensions: Set<String> = ["pdf"]
 
-    /// Presets aplicáveis a uma extensão de arquivo (case-insensitive).
     static func presets(forExtension ext: String) -> [ConvertPreset] {
         let normalized = ext.lowercased()
         if videoExtensions.contains(normalized) { return [.mp4H264, .m4aAAC, .movProRes422] }
@@ -49,7 +47,6 @@ enum ConvertPreset: String, CaseIterable {
         return []
     }
 
-    /// Separa URLs entre as que têm ao menos um preset aplicável e as que não têm.
     static func partition(_ urls: [URL]) -> (supported: [URL], unsupported: [URL]) {
         var supported: [URL] = []
         var unsupported: [URL] = []

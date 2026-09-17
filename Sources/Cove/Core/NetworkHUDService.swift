@@ -4,8 +4,6 @@ import Darwin
 import Foundation
 import Network
 
-/// Wi-Fi, hotspot e drives externos — peek na ilha. SSID pode vir nil sem
-/// permissão de Localização no macOS 14+; nunca pedimos essa permissão aqui.
 @MainActor
 final class NetworkHUDService: NSObject {
     struct NetState: Equatable {
@@ -15,15 +13,11 @@ final class NetworkHUDService: NSObject {
         var mountedDrives: Set<String> = []
     }
 
-    /// Janela de graça após o boot: monta/desmonta em massa (Time Machine,
-    /// shares de rede reconectando) não deve virar peek na ilha.
     private static let mountGracePeriod: TimeInterval = 5
 
     var onActivity: ((NotchActivity) -> Void)?
 
     private(set) var state = NetState()
-    /// false quando o CoreWLAN recusou o monitoramento (raro, mas silencioso
-    /// antes) — a UI de Ajustes mostra um aviso quando isto é false.
     private(set) var wifiMonitoringAvailable = true
     private let wifiClient = CWWiFiClient.shared()
     private let pathMonitor = NWPathMonitor(requiredInterfaceType: .wifi)
@@ -76,7 +70,6 @@ final class NetworkHUDService: NSObject {
         hotspotPollTimer?.invalidate()
     }
 
-    /// Estado anterior → novo → atividade emitida (nil quando nada mudou de fato).
     static func activity(previous: NetState, next: NetState) -> NotchActivity? {
         if previous.wifiPowered != next.wifiPowered {
             return .wifi(ssid: next.wifiPowered ? next.wifiSSID : nil, connected: next.wifiPowered)
@@ -98,16 +91,11 @@ final class NetworkHUDService: NSObject {
         return nil
     }
 
-    /// Filtro puro pro peek de montagem: só reporta mídia removível/ejetável
-    /// LOCAL (pendrive/HD externo), fora da janela de graça do boot — nunca
-    /// Time Machine, .dmg, share de rede ou volume montado logo no launch.
     static func shouldReport(removable: Bool, ejectable: Bool, local: Bool, sinceLaunch: TimeInterval) -> Bool {
         guard sinceLaunch >= mountGracePeriod, local else { return false }
         return removable || ejectable
     }
 
-    /// Puro: bridge100(+) UP com IPv4 = este Mac compartilhando internet
-    /// (Personal Hotspot / Internet Sharing). Não confunde com Wi-Fi metered.
     static func isHotspotInterface(name: String, isUp: Bool, hasIPv4: Bool) -> Bool {
         name.hasPrefix("bridge") && isUp && hasIPv4
     }

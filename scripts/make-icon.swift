@@ -1,5 +1,3 @@
-// Ícone do Cove: squircle escuro com a ilha (cápsula preta) e ondas de áudio.
-// Uso: swift scripts/make-icon.swift <saída.iconset>
 import AppKit
 
 let out = URL(fileURLWithPath: CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "AppIcon.iconset")
@@ -18,11 +16,9 @@ func draw(size: CGFloat) -> NSImage {
     ])!.draw(in: squircle, angle: 90)
     squircle.addClip()
 
-    // barra de menu clara no topo
     NSColor(calibratedWhite: 0.92, alpha: 1).setFill()
     NSRect(x: 0, y: s * 0.72, width: s, height: s * 0.3).fill()
 
-    // ilha: cápsula preta pendurada na barra
     let iW = s * 0.56, iH = s * 0.20
     let island = NSBezierPath(roundedRect: NSRect(x: (s - iW) / 2, y: s * 0.72 - iH + s * 0.02,
                                                   width: iW, height: iH),
@@ -30,7 +26,6 @@ func draw(size: CGFloat) -> NSImage {
     NSColor.black.setFill()
     island.fill()
 
-    // artwork à esquerda + ondas à direita
     NSColor(calibratedRed: 0.95, green: 0.45, blue: 0.55, alpha: 1).setFill()
     NSBezierPath(roundedRect: NSRect(x: s * 0.26, y: s * 0.585, width: s * 0.11, height: s * 0.11),
                  xRadius: s * 0.025, yRadius: s * 0.025).fill()
@@ -42,7 +37,6 @@ func draw(size: CGFloat) -> NSImage {
                      xRadius: s * 0.009, yRadius: s * 0.009).fill()
     }
 
-    // ondas grandes na metade de baixo (assinatura)
     NSColor.white.withAlphaComponent(0.85).setFill()
     let big: [CGFloat] = [0.10, 0.18, 0.28, 0.20, 0.34, 0.16, 0.24, 0.12]
     for (i, h) in big.enumerated() {

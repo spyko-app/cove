@@ -1,8 +1,6 @@
 import CoreAudio
 import Foundation
 
-/// Volume/mute do dispositivo de saída padrão via CoreAudio, com listener —
-/// alimenta o HUD de volume da ilha (substituto do HUD nativo).
 @MainActor
 final class AudioService {
     var onVolumeChange: ((Float, _ muted: Bool) -> Void)?
@@ -10,8 +8,6 @@ final class AudioService {
     private var deviceID = AudioObjectID(kAudioObjectUnknown)
     private var listenerBlock: AudioObjectPropertyListenerBlock?
 
-    // 'vmvc' — kAudioHardwareServiceDeviceProperty_VirtualMainVolume (o header
-    // AudioHardwareService não é exposto no Swift moderno)
     private static var volumeAddr = AudioObjectPropertyAddress(
         mSelector: AudioObjectPropertySelector(0x766D_7663),
         mScope: kAudioDevicePropertyScopeOutput,
@@ -27,7 +23,6 @@ final class AudioService {
 
     init() {
         attach()
-        // troca de dispositivo padrão → re-anexa
         let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
             Task { @MainActor in self?.attach() }
         }

@@ -1,13 +1,10 @@
 import XCTest
 @testable import Cove
 
-/// Modelo puro dos widgets da tela de bloqueio (estilo Alcove): quais
-/// aparecem, em que ordem, com que texto — sem serviço nenhum por trás.
 final class LockScreenWidgetsTests: XCTestCase {
     private let utc = TimeZone(identifier: "UTC")!
-    /// Locale por identificador NÃO herda a preferência 12/24 h do sistema → determinístico.
     private let ptBR = Locale(identifier: "pt_BR")
-    private let now = Date(timeIntervalSince1970: 1_700_000_000)   // 2023-11-14 22:13:20 UTC
+    private let now = Date(timeIntervalSince1970: 1_700_000_000)
 
     private func items(config: [LockScreenWidget] = LockScreenWidget.allCases,
                        focus: Bool = false,
@@ -20,8 +17,6 @@ final class LockScreenWidgetsTests: XCTestCase {
                                      media: media, nextEvent: event, timer: timer, now: now, timeZone: utc, locale: ptBR)
     }
 
-    // MARK: - habilitação / omissão sem dado
-
     func testNothingEnabledYieldsNothing() {
         let all = items(config: [], focus: true, weather: .init(tempC: 20, code: 0),
                         battery: .init(percent: 50, charging: false, onAC: false))
@@ -29,7 +24,6 @@ final class LockScreenWidgetsTests: XCTestCase {
     }
 
     func testEnabledWithoutDataIsOmitted() {
-        // tudo ligado, nada com dado (foco off, sem clima, sem bateria, sem mídia, sem evento, sem timer)
         XCTAssertTrue(items().isEmpty)
     }
 
@@ -38,8 +32,6 @@ final class LockScreenWidgetsTests: XCTestCase {
                         battery: .init(percent: 50, charging: false, onAC: false))
         XCTAssertEqual(out.map(\.kind), [.battery])
     }
-
-    // MARK: - ordem canônica (o array da config é só o conjunto ligado)
 
     func testOrderIsCanonicalRegardlessOfConfigOrder() {
         let out = items(config: [.battery, .focus, .weather], focus: true, weather: .init(tempC: 16, code: 1),
@@ -50,8 +42,6 @@ final class LockScreenWidgetsTests: XCTestCase {
     func testDefaultsAreFocusWeatherBatteryMedia() {
         XCTAssertEqual(LockScreenWidget.defaults, [.focus, .weather, .battery, .media])
     }
-
-    // MARK: - textos
 
     func testFocusIsGenericLabelWithMoon() {
         let out = items(config: [.focus], focus: true)
@@ -85,7 +75,6 @@ final class LockScreenWidgetsTests: XCTestCase {
     }
 
     func testBatteryBoltWhenPluggedEvenAtFullCharge() {
-        // 100 % na tomada: `charging` é false, `onAC` true → raio mesmo assim
         let full = items(config: [.battery], battery: .init(percent: 100, charging: false, onAC: true))
         XCTAssertEqual(full.first?.symbol, "battery.100percent.bolt")
         let charging = items(config: [.battery], battery: .init(percent: 40, charging: true, onAC: false))
@@ -113,10 +102,8 @@ final class LockScreenWidgetsTests: XCTestCase {
         XCTAssertTrue(items(config: [.media], media: np).isEmpty)
     }
 
-    // MARK: - evento: título genérico (privacidade), só futuro e ≤ 12 h
-
     func testEventTitleIsGenericWithTime() {
-        let start = now.addingTimeInterval(2 * 3600)   // 00:13 UTC do dia seguinte
+        let start = now.addingTimeInterval(2 * 3600)
         let ev = CalendarService.UpcomingEvent(title: "Entrevista — Empresa X", start: start)
         let out = items(config: [.calendar], event: ev)
         XCTAssertEqual(out, [.init(kind: .calendar, symbol: "calendar", text: "Evento 00:13")])
@@ -136,23 +123,20 @@ final class LockScreenWidgetsTests: XCTestCase {
     }
 
     func testEventTextUsesGivenTimeZone() {
-        let start = now.addingTimeInterval(3600)   // 23:13 UTC
+        let start = now.addingTimeInterval(3600)
         XCTAssertEqual(LockScreenWidgetsModel.eventText(start: start, now: now, timeZone: utc, locale: ptBR), "Evento 23:13")
-        let sp = TimeZone(identifier: "America/Sao_Paulo")!   // UTC-3
+        let sp = TimeZone(identifier: "America/Sao_Paulo")!
         XCTAssertEqual(LockScreenWidgetsModel.eventText(start: start, now: now, timeZone: sp, locale: ptBR), "Evento 20:13")
     }
 
     func testEventTextFollowsLocaleHourCycle() throws {
-        // 12 h em en_US como o relógio do lock (o separador antes de PM é U+202F, não espaço)
-        let start = now.addingTimeInterval(3600)   // 23:13 UTC
+        let start = now.addingTimeInterval(3600)
         let text = try XCTUnwrap(LockScreenWidgetsModel.eventText(start: start, now: now, timeZone: utc,
                                                                   locale: Locale(identifier: "en_US")))
         XCTAssertTrue(text.hasPrefix("Evento 11:13"), text)
         XCTAssertTrue(text.hasSuffix("PM"), text)
         XCTAssertFalse(text.contains("23:13"))
     }
-
-    // MARK: - timer
 
     func testTimerFormatsMinutesSeconds() {
         XCTAssertEqual(LockScreenWidgetsModel.timerText(remaining: 0), "00:00")
@@ -169,12 +153,9 @@ final class LockScreenWidgetsTests: XCTestCase {
     }
 
     func testTimerPausedIsOmitted() {
-        // pausado ao lado do relógio pareceria contagem viva — some, como na ilha
         let s = TimerService.Session(label: "x", total: 300, remaining: 90, isRunning: false)
         XCTAssertTrue(items(config: [.timer], timer: s).isEmpty)
     }
-
-    // MARK: - config: decode tolerante
 
     func testDecodeMissingKeyGivesDefaults() throws {
         let cfg = try JSONDecoder().decode(NotchConfig.self, from: #"{"hudDuration": 2}"#.data(using: .utf8)!)
@@ -185,7 +166,7 @@ final class LockScreenWidgetsTests: XCTestCase {
         let json = #"{"lockScreenWidgets": ["weather", "hologram", "timer"]}"#.data(using: .utf8)!
         let cfg = try JSONDecoder().decode(NotchConfig.self, from: json)
         XCTAssertEqual(cfg.lockScreenWidgets, [.weather, .timer])
-        XCTAssertTrue(cfg.showVolumeHUD)   // resto do config intacto
+        XCTAssertTrue(cfg.showVolumeHUD)
     }
 
     func testDecodeExplicitEmptyStaysEmpty() throws {
@@ -206,8 +187,6 @@ final class LockScreenWidgetsTests: XCTestCase {
         XCTAssertEqual(LockScreenWidget.decode(["focus", "focus"]), [.focus, .focus])
     }
 
-    // MARK: - layout
-
     func testWidgetsTopFraction() {
         XCTAssertEqual(LockScreenLayout.widgetsTopFraction, 0.46, accuracy: 0.0001)
         XCTAssertEqual(LockScreenLayout.widgetsHeight, 40)
@@ -216,7 +195,6 @@ final class LockScreenWidgetsTests: XCTestCase {
     func testWidgetsFrameOnMainScreen() {
         let f = LockScreenLayout.widgetsFrame(screen: CGRect(x: 0, y: 0, width: 1512, height: 982))
         XCTAssertEqual(f.minX, 0); XCTAssertEqual(f.width, 1512); XCTAssertEqual(f.height, 40)
-        // topo a 46 % da altura, contado do topo: maxY = 982 − 451.72
         XCTAssertEqual(f.maxY, 982 - 982 * 0.46, accuracy: 0.001)
     }
 

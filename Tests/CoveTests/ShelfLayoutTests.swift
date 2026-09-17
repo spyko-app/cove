@@ -2,7 +2,6 @@ import XCTest
 @testable import Cove
 
 final class ShelfLayoutTests: XCTestCase {
-    // MARK: normalize (widgets)
 
     func testFilesAlwaysPresentWhenMissing() {
         XCTAssertEqual(ShelfLayout.normalize(["quickActions"]), ["files", "quickActions"])
@@ -23,8 +22,6 @@ final class ShelfLayoutTests: XCTestCase {
     func testEmptyWidgetsFallsBackToFilesOnly() {
         XCTAssertEqual(ShelfLayout.normalize([]), ["files"])
     }
-
-    // MARK: normalizeActions (Quick Actions)
 
     func testActionsDedupeKeepsFirst() {
         XCTAssertEqual(ShelfLayout.normalizeActions(["airdrop", "finder", "airdrop"]), ["airdrop", "finder"])

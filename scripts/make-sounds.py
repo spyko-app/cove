@@ -7,7 +7,6 @@ SR = 44100
 OUT = os.path.join(os.path.dirname(__file__), "..", "Resources", "Sounds")
 os.makedirs(OUT, exist_ok=True)
 
-
 def tone(freq, dur, amp=0.35, attack=0.005, decay=None, harm=0.0):
     n = int(SR * dur)
     decay = decay or dur
@@ -19,11 +18,9 @@ def tone(freq, dur, amp=0.35, attack=0.005, decay=None, harm=0.0):
         out.append(amp * env * v)
     return out
 
-
 def mix(*parts):
     n = max(len(p) for p in parts)
     return [sum(p[i] if i < len(p) else 0.0 for p in parts) for i in range(n)]
-
 
 def seq(*parts, gap=0.0):
     out = []
@@ -31,12 +28,10 @@ def seq(*parts, gap=0.0):
         out += p + [0.0] * int(SR * gap)
     return out
 
-
 def write(name, samples):
     with wave.open(os.path.join(OUT, name + ".wav"), "w") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
         w.writeframes(b"".join(struct.pack("<h", int(max(-1, min(1, s)) * 32767)) for s in samples))
-
 
 write("volume", tone(1100, 0.12, amp=0.18, decay=0.06))                       # tick por passo
 write("lock", seq(tone(660, 0.14, decay=0.1), tone(440, 0.16, decay=0.12)))   # desce

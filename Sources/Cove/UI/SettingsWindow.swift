@@ -3,7 +3,6 @@ import EventKit
 import ServiceManagement
 import SwiftUI
 
-/// Janela de Ajustes estilo Alcove: sidebar com seções + panes de toggles.
 @MainActor
 final class SettingsWindowManager {
     static let shared = SettingsWindowManager()
@@ -145,8 +144,6 @@ struct SettingsRoot: View {
     }
 }
 
-/// Picker "Estilo deste HUD" (por tipo) — Padrão herda o global, ou override
-/// gravado em `hudStyles[kind]`.
 private struct HUDStyleRow: View {
     @ObservedObject var c: NotchCoordinator
     let kind: String
@@ -174,8 +171,6 @@ private struct HUDStyleRow: View {
         }
     }
 }
-
-// MARK: - Geral
 
 private struct GeneralPane: View {
     @ObservedObject var c: NotchCoordinator
@@ -230,10 +225,6 @@ private struct GeneralPane: View {
     }
 }
 
-// MARK: - Aparência
-
-/// Todos os `kindKey` de `NotchActivity` (`ActivityQueue.swift`) com rótulo pt-BR
-/// — uma tabela única de overrides por tipo de HUD, sem duplicar o picker global.
 private let hudKindLabels: [(kind: String, label: String)] = [
     ("volume", "Volume"),
     ("brightness", "Brilho"),
@@ -322,8 +313,6 @@ private struct AparenciaPane: View {
         }
     }
 }
-
-// MARK: - Telas
 
 private struct TelasPane: View {
     @ObservedObject var c: NotchCoordinator
@@ -430,8 +419,6 @@ private struct TelasPane: View {
     }
 }
 
-// MARK: - HUDs e eventos
-
 private struct HUDsEventosPane: View {
     @ObservedObject var c: NotchCoordinator
 
@@ -533,8 +520,6 @@ private struct HUDsEventosPane: View {
     }
 }
 
-// MARK: - Ilha expandida
-
 private struct IlhaExpandidaPane: View {
     @ObservedObject var c: NotchCoordinator
 
@@ -574,7 +559,6 @@ private struct IlhaExpandidaPane: View {
     }
 }
 
-/// Apps fixados: aparecem como ícones no expandido (com ou sem mídia).
 private struct PinnedAppsExtra: View {
     @ObservedObject var c: NotchCoordinator
 
@@ -619,9 +603,6 @@ private struct PinnedAppsExtra: View {
     }
 }
 
-// MARK: - Droplets
-
-/// Droplets (páginas do expandido sem mídia): liga/desliga, reordena, atalhos.
 private struct DropletsPane: View {
     @ObservedObject var c: NotchCoordinator
     @State private var dropletHotkeyText: [String: String] = [:]
@@ -672,7 +653,6 @@ private struct DropletsPane: View {
                             .onChange(of: dropletHotkeyFocused) { wasFocused, isFocused in
                                 if wasFocused == droplet, isFocused != droplet { commitDropletHotkey(droplet) }
                             }
-                            // atalho registrou no boot mas falhou (já em uso por outro app) — #40
                             .help(c.failedHotKeys.contains(droplet.rawValue) ? "Atalho em uso por outro app" : "")
                         if dropletHotkeyInvalid.contains(droplet.rawValue) || c.failedHotKeys.contains(droplet.rawValue) {
                             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
@@ -693,7 +673,6 @@ private struct DropletsPane: View {
                                 }
                             }))
                         .labelsHidden()
-                        // espelha TourDropletsPage: nunca deixa desabilitar o último droplet ativo.
                         .disabled(c.config.enabledDroplets == [droplet.rawValue])
                         .help(c.config.enabledDroplets == [droplet.rawValue] ? "Pelo menos um droplet" : "")
                     }
@@ -712,8 +691,6 @@ private struct DropletsPane: View {
             .listStyle(.plain)
             .fixedSize(horizontal: false, vertical: true)
         }
-        // trocar de aba não passa por onSubmit/perda de foco do TextField —
-        // sem isso, editar o atalho e sair direto da aba perde a digitação.
         .onDisappear {
             for droplet in Droplet.allCases {
                 let text = dropletHotkeyText[droplet.rawValue] ?? ""
@@ -722,8 +699,6 @@ private struct DropletsPane: View {
         }
     }
 }
-
-// MARK: - Ações rápidas
 
 private struct AcoesRapidasPane: View {
     @ObservedObject var c: NotchCoordinator
@@ -749,15 +724,12 @@ private struct AcoesRapidasPane: View {
                     .focused($hotkeyFocused)
                     .onAppear { hotkeyText = c.config.ringHotKey }
                     .onChange(of: hotkeyText) { _, newValue in
-                        // valida ao vivo (legenda vermelha) — mas SÓ grava no
-                        // config em onSubmit/perda de foco, nunca por tecla.
                         hotkeyInvalid = HotKeyCombo.parse(newValue) == nil
                     }
                     .onSubmit { commitHotkey() }
                     .onChange(of: hotkeyFocused) { wasFocused, isFocused in
                         if wasFocused, !isFocused { commitHotkey() }
                     }
-                    // atalho registrou no boot mas falhou (já em uso por outro app) — #40
                     .help(c.failedHotKeys.contains(NotchCoordinator.ringHotKeyFailureKey) ? "Atalho em uso por outro app" : "")
                 if hotkeyInvalid {
                     Text("Formato: ctrl+opt+space").font(.caption).foregroundStyle(.red)
@@ -774,7 +746,6 @@ private struct AcoesRapidasPane: View {
     }
 }
 
-/// Ações rápidas (ex-Ring): droplet, app ou Atalho, na ordem em que aparecem na grade dentro da ilha.
 private struct RingActionsSection: View {
     @ObservedObject var c: NotchCoordinator
     @State private var shortcutText = ""
@@ -893,9 +864,6 @@ private struct RingActionsSection: View {
         add(.app(bundleID: bundleID))
     }
 
-    /// Lista o output de `shortcuts list` só na primeira abertura do menu — cache por
-    /// sessão da aba. `Process`/`waitUntilExit` rodam fora da main thread (Task.detached):
-    /// bloquear a main thread aqui trava a janela de Ajustes inteira até o processo voltar.
     private func loadShortcutsIfNeeded() {
         guard availableShortcuts == nil, !loadingShortcuts else { return }
         loadingShortcuts = true
@@ -922,9 +890,6 @@ private struct RingActionsSection: View {
     }
 }
 
-// MARK: - Cesta
-
-/// Cesta: widgets arranjáveis (grade sempre presente) + Quick Actions (2-4 slots) + vault do Obsidian.
 private struct CestaPane: View {
     @ObservedObject var c: NotchCoordinator
 
@@ -1059,8 +1024,6 @@ private struct CestaPane: View {
     }
 }
 
-// MARK: - Permissões
-
 private struct PermissoesPane: View {
     @ObservedObject var c: NotchCoordinator
     @StateObject private var state = PermissionState()
@@ -1164,8 +1127,6 @@ private struct PermissionsRow: View {
     }
 }
 
-// MARK: - Atualizações
-
 private struct AtualizacoesPane: View {
     @State private var channel = UpdateChannel.current
 
@@ -1199,10 +1160,6 @@ private struct AtualizacoesPane: View {
     }
 }
 
-// MARK: - Extras compartilhados
-
-/// Início da semana + lista de calendários com toggles — carregada de forma
-/// assíncrona (Droppy #19: nunca bloquear a aba abrindo o EventKit na hora).
 private struct LyricsSettingsExtra: View {
     @State private var cleared = false
 
@@ -1307,7 +1264,6 @@ private struct CalendarSettingsExtra: View {
     }
 }
 
-/// Retenção, limite e comportamento do histórico do clipboard.
 private struct ClipboardPolicyPane: View {
     @ObservedObject var c: NotchCoordinator
 
@@ -1360,8 +1316,6 @@ private struct ClipboardPolicyPane: View {
 private struct TogglePane<Extra: View>: View {
     @ObservedObject var c: NotchCoordinator
     let rows: [(String, WritableKeyPath<NotchConfig, Bool>)]
-    /// Chave que precisa estar ligada pra essa linha fazer sentido (ex.: "Chime
-    /// de hora em hora" exige "Sons de eventos"). Vazio = sempre habilitado.
     var requires: [String: WritableKeyPath<NotchConfig, Bool>] = [:]
     var requiresHelp: [String: String] = [:]
     @ViewBuilder let extra: () -> Extra
@@ -1383,8 +1337,6 @@ private struct TogglePane<Extra: View>: View {
         }
     }
 }
-
-// MARK: - Componentes
 
 private struct SettingsGroup<Content: View>: View {
     @ViewBuilder let content: () -> Content

@@ -2,10 +2,7 @@ import ImageIO
 import XCTest
 @testable import Cove
 
-/// Cor do relógio da tela de bloqueio: mistura pura + média sobre buffer
-/// sintético + fallback. O `desktopImageURL` real não entra (WindowServer).
 final class LockScreenTintTests: XCTestCase {
-    // MARK: - tint: mesmo matiz, saturação lavada; claro → escuro, resto → perto do branco
 
     func testTintKeepsHueScalesSaturationRaisesBrightness() {
         let out = LockScreenTint.tint(h: 0.72, s: 0.8, b: 0.4)
@@ -15,7 +12,6 @@ final class LockScreenTintTests: XCTestCase {
     }
 
     func testTintDarkensWhenWallpaperBandIsLight() {
-        // wallpaper branco/creme/céu claro: texto quase branco sumia — vira escuro no mesmo matiz
         let out = LockScreenTint.tint(h: 0.1, s: 0.2, b: 0.9)
         XCTAssertEqual(out.h, 0.1, accuracy: 0.0001)
         XCTAssertEqual(out.s, 0.11, accuracy: 0.0001)
@@ -23,9 +19,9 @@ final class LockScreenTintTests: XCTestCase {
     }
 
     func testTintThresholdEdges() {
-        XCTAssertEqual(LockScreenTint.tint(h: 0, s: 0, b: 0.72).b, 0.22, accuracy: 0.0001)   // na faixa clara
-        XCTAssertEqual(LockScreenTint.tint(h: 0, s: 0, b: 0.719).b, 0.88, accuracy: 0.0001)  // logo abaixo: clareia
-        XCTAssertEqual(LockScreenTint.tint(h: 0, s: 0, b: 1).b, 0.22, accuracy: 0.0001)      // branco puro
+        XCTAssertEqual(LockScreenTint.tint(h: 0, s: 0, b: 0.72).b, 0.22, accuracy: 0.0001)
+        XCTAssertEqual(LockScreenTint.tint(h: 0, s: 0, b: 0.719).b, 0.88, accuracy: 0.0001)
+        XCTAssertEqual(LockScreenTint.tint(h: 0, s: 0, b: 1).b, 0.22, accuracy: 0.0001)
     }
 
     func testTintClampsSaturationToUnitRange() {
@@ -41,10 +37,8 @@ final class LockScreenTintTests: XCTestCase {
         XCTAssertEqual(out.b, 0.88, accuracy: 0.0001)
     }
 
-    // MARK: - isLight: decide a sombra (preta sob tint claro, branca sob escuro)
-
     func testIsLightForFallbackWhiteAndBothTintOutputs() {
-        XCTAssertTrue(LockScreenTint.isLight(.white))    // gray-space: tem que converter antes
+        XCTAssertTrue(LockScreenTint.isLight(.white))
         XCTAssertFalse(LockScreenTint.isLight(.black))
         let light = LockScreenTint.tint(h: 0.6, s: 0.5, b: 0.3)
         XCTAssertTrue(LockScreenTint.isLight(NSColor(calibratedHue: light.h, saturation: light.s, brightness: light.b, alpha: 1)))
@@ -52,9 +46,6 @@ final class LockScreenTintTests: XCTestCase {
         XCTAssertFalse(LockScreenTint.isLight(NSColor(calibratedHue: dark.h, saturation: dark.s, brightness: dark.b, alpha: 1)))
     }
 
-    // MARK: - frame do wallpaper dinâmico pela aparência
-
-    /// `apr` real do `Sonoma.heic` do sistema: plist `{l: 0, d: 1}`.
     private let sonomaAPR = "YnBsaXN0MDDSAQIDBFFsUWQQABABCA0PERMAAAAAAAABAQAAAAAAAAAFAAAAAAAAAAAAAAAAAAAAFQ=="
 
     func testFrameIndexFromRealAPRMetadata() {
@@ -93,15 +84,11 @@ final class LockScreenTintTests: XCTestCase {
         try XCTSkipUnless(CGImageSourceGetCount(src) == 2, "Sonoma.heic não tem 2 frames nesta versão")
         XCTAssertEqual(LockScreenTint.frameIndex(source: src, dark: false), 0)
         XCTAssertEqual(LockScreenTint.frameIndex(source: src, dark: true), 1)
-        // os dois frames lêem, e são cores diferentes (dia × noite)
         let light = try XCTUnwrap(LockScreenTint.color(forWallpaperAt: URL(fileURLWithPath: path), dark: false))
         let dark = try XCTUnwrap(LockScreenTint.color(forWallpaperAt: URL(fileURLWithPath: path), dark: true))
         XCTAssertNotEqual(light, dark)
     }
 
-    // MARK: - média sobre a faixa (buffer top-down)
-
-    /// Topo azul, base vermelha: a faixa 5–45 % (topo) tem que dar azul.
     private func splitBuffer(width: Int, height: Int) -> [UInt8] {
         var px = [UInt8](repeating: 0, count: width * height * 4)
         for row in 0..<height {
@@ -141,14 +128,11 @@ final class LockScreenTintTests: XCTestCase {
         XCTAssertNil(LockScreenTint.average(rgba: [], width: 0, height: 0, x: 0...1, y: 0...1))
     }
 
-    // MARK: - fallback: wallpaper ilegível → nil (chamador usa branco)
-
     func testUnreadableWallpaperGivesNil() {
         XCTAssertNil(LockScreenTint.color(forWallpaperAt: URL(fileURLWithPath: "/nao/existe/wallpaper.heic")))
-        XCTAssertNil(LockScreenTint.color(forWallpaperAt: URL(fileURLWithPath: "/tmp")))   // pasta rotativa
+        XCTAssertNil(LockScreenTint.color(forWallpaperAt: URL(fileURLWithPath: "/tmp")))
     }
 
-    /// PNG 8×8 de cor sólida escrito em disco (pasta temporária própria).
     private func solidPNG(hue: CGFloat, saturation: CGFloat, brightness: CGFloat) throws -> URL {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("cove-tint-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -165,7 +149,6 @@ final class LockScreenTintTests: XCTestCase {
     }
 
     func testSolidWallpaperProducesLightenedHue() throws {
-        // roxo saturado escuro → tint deve manter o matiz e clarear
         let url = try solidPNG(hue: 0.75, saturation: 0.9, brightness: 0.5)
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
         let tint = try XCTUnwrap(LockScreenTint.color(forWallpaperAt: url))
@@ -178,7 +161,6 @@ final class LockScreenTintTests: XCTestCase {
     }
 
     func testLightWallpaperProducesDarkTint() throws {
-        // creme quase branco → tint escuro no mesmo matiz, sombra branca
         let url = try solidPNG(hue: 0.12, saturation: 0.15, brightness: 0.96)
         defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
         let tint = try XCTUnwrap(LockScreenTint.color(forWallpaperAt: url))

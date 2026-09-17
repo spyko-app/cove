@@ -1,16 +1,12 @@
 import Darwin
 import Foundation
 
-/// Suprime o HUD nativo de volume/brilho (técnica SlimHUD): kickstart do
-/// OSDUIHelper + SIGSTOP — o helper existe mas nunca desenha. Watchdog de 10s
-/// re-congela se o sistema relançar. No exit, SIGCONT devolve o HUD ao sistema.
 @MainActor
 final class HUDSuppressor {
     private var timer: Timer?
     private(set) var active = false
 
     func enable() {
-        // nunca congela o HUD do sistema rodando como binário dev (swift run)
         guard AppEnvironment.isBundledApp else { return }
         guard !active else { return }
         active = true
@@ -42,11 +38,8 @@ final class HUDSuppressor {
         return pid_t(out.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
-    // pid congelado guardado pro handler de sinal (que só pode chamar
-    // funções async-signal-safe: kill/_exit — nada de Process/ObjC)
     nonisolated(unsafe) static var frozenPID: pid_t = 0
 
-    /// PID pode ser reutilizado entre pgrep e kill — confirma o nome pelo caminho do processo.
     private static func isOSDUIHelper(_ pid: pid_t) -> Bool {
         var buf = [CChar](repeating: 0, count: 4 * Int(MAXPATHLEN))
         guard proc_pidpath(pid, &buf, UInt32(buf.count)) > 0 else { return false }
@@ -60,8 +53,6 @@ final class HUDSuppressor {
         }
     }
 
-    /// SIGTERM/SIGINT não passam pelo applicationWillTerminate de MenuBarExtra
-    /// (provado: pkill vazou o helper congelado) — handler C devolve SIGCONT.
     private static var handlersInstalled = false
     private static func installSignalHandlers() {
         guard !handlersInstalled else { return }

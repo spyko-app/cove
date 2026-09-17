@@ -32,8 +32,6 @@ final class NotificationMirrorTests: XCTestCase {
         XCTAssertTrue(NotificationMirror.group(notes, query: "nada aqui").isEmpty)
     }
 
-    /// Linha crua no formato que `query()` devolve (colunas separadas por 0x1F):
-    /// rec_id · `quote(data)` (hex `X'...'`) · bundle id · delivered_date.
     private func row(rec: Int, bundleID: String, title: String, body: String) -> String {
         let plist: [String: Any] = ["req": ["titl": title, "body": body]]
         let data = try! PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0)
@@ -41,9 +39,6 @@ final class NotificationMirrorTests: XCTestCase {
         return "\(rec)\u{1F}X'\(hex)'\u{1F}\(bundleID)\u{1F}0"
     }
 
-    /// Carried do T14 review: após `clear(bundleID:)`/`clearHistory()`, um poll
-    /// atrasado com `rec_id <= lastRecID` não pode ressuscitar a notificação —
-    /// puro via `ingest(rows:)`, sem tocar o sqlite real.
     @MainActor
     func testIngestDoesNotResurrectAfterClear() {
         let mirror = NotificationMirror()
@@ -56,7 +51,6 @@ final class NotificationMirrorTests: XCTestCase {
         mirror.clear(bundleID: bundleID)
         XCTAssertTrue(mirror.recent.isEmpty)
 
-        // poll atrasado reenviando a MESMA linha (rec_id 1 <= lastRecID já visto)
         mirror.ingest(rows: [firstRow], emit: false)
         XCTAssertTrue(mirror.recent.isEmpty, "rec_id <= lastRecID não deve ressuscitar")
 
@@ -64,7 +58,6 @@ final class NotificationMirrorTests: XCTestCase {
         mirror.ingest(rows: [firstRow], emit: false)
         XCTAssertTrue(mirror.recent.isEmpty, "clearHistory também não deve ressuscitar")
 
-        // linha NOVA (rec_id maior) continua entrando normalmente
         let secondRow = row(rec: 2, bundleID: bundleID, title: "Grupo", body: "Reunião")
         mirror.ingest(rows: [secondRow], emit: false)
         XCTAssertEqual(mirror.recent.map(\.id), [2])

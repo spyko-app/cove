@@ -1,13 +1,10 @@
 import XCTest
 @testable import Cove
 
-/// F1/F2 do ciclo 8 — tabela de ações por tipo + regra de "alerting".
 final class ActivityExpansionTests: XCTestCase {
     private func ids(_ a: NotchActivity, _ ctx: ActivityExpansion.Context = .init()) -> [String] {
         ActivityExpansion.actions(for: a, context: ctx).map(\.id)
     }
-
-    // MARK: - Tabela de ações
 
     func testTimerRodandoOferecePausarPararEMais5() {
         let ctx = ActivityExpansion.Context(timerRunning: true)
@@ -24,7 +21,6 @@ final class ActivityExpansionTests: XCTestCase {
         XCTAssertEqual(acts[0].action, .timerToggle)
     }
 
-    /// High Alert é liga/desliga (IOPMAssertion) — sem pausa real na API.
     func testHighAlertSoDesligar() {
         let acts = ActivityExpansion.actions(for: .highAlert(expiresAt: Date().addingTimeInterval(600)))
         XCTAssertEqual(acts.map(\.id), ["alert.stop"])
@@ -72,7 +68,6 @@ final class ActivityExpansionTests: XCTestCase {
         XCTAssertEqual(ids(.screenRecording(elapsed: 12)).first, "screenrec.stop")
     }
 
-    /// VPN não tem reconexão por API pública → sem ação (não inventa botão morto).
     func testVPNSemAcao() {
         XCTAssertTrue(ids(.vpn(up: false)).isEmpty)
         XCTAssertTrue(ids(.vpnSession(since: Date())).isEmpty)
@@ -87,12 +82,9 @@ final class ActivityExpansionTests: XCTestCase {
         XCTAssertTrue(ids(.track(title: "t", artist: "a")).isEmpty)
     }
 
-    // MARK: - Alerting
-
     func testBateriaAlertaAte10PorCentoSemTomada() {
         XCTAssertTrue(ActivityExpansion.isAlerting(.battery(.init(percent: 10, charging: false, onAC: false))))
         XCTAssertFalse(ActivityExpansion.isAlerting(.battery(.init(percent: 11, charging: false, onAC: false))))
-        // na tomada não alerta, mesmo com 5%
         XCTAssertFalse(ActivityExpansion.isAlerting(.battery(.init(percent: 5, charging: true, onAC: true))))
     }
 
@@ -123,8 +115,6 @@ final class ActivityExpansionTests: XCTestCase {
         XCTAssertFalse(ActivityExpansion.isAlerting(.timer(label: "Pomodoro", remaining: 10)))
         XCTAssertFalse(ActivityExpansion.isAlerting(.notification(app: "X", title: "y")))
     }
-
-    // MARK: - Regiões
 
     func testRegioesDoTimer() {
         let ctx = ActivityExpansion.Context(timerRunning: true)

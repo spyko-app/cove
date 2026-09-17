@@ -1,8 +1,6 @@
 import EventKit
 import Foundation
 
-/// Próximo evento do calendário (EventKit) — chip no expandido + peek
-/// "time to leave" minutos antes do evento.
 @MainActor
 final class CalendarService: ObservableObject {
     struct UpcomingEvent: Equatable, Identifiable {
@@ -16,8 +14,7 @@ final class CalendarService: ObservableObject {
     }
 
     @Published var next: UpcomingEvent?
-    @Published var upcoming: [UpcomingEvent] = []   // próximas 24h (widget)
-    /// IDs dos calendários selecionados em Ajustes › Calendário. Vazio = todos.
+    @Published var upcoming: [UpcomingEvent] = []
     @Published var selectedCalendarIDs: [String] = [] {
         didSet { refresh() }
     }
@@ -28,9 +25,6 @@ final class CalendarService: ObservableObject {
     private var warned: Set<Date> = []
 
     init() {
-        // Sem pedido de acesso aqui — TCC só no primeiro uso real (tour, ou
-        // ao expandir a ilha com o widget de calendário ligado). Se o acesso
-        // já foi concedido numa sessão anterior, aproveita e começa a atualizar.
         guard AppEnvironment.isBundledApp else { return }
         if EKEventStore.authorizationStatus(for: .event) == .fullAccess {
             refresh()
@@ -45,9 +39,6 @@ final class CalendarService: ObservableObject {
         }
     }
 
-    /// Pede acesso ao Calendário na hora (tour, ou primeira expansão da ilha
-    /// com o widget ligado) — nunca no boot. Idempotente: não repete o prompt
-    /// se já decidido.
     @discardableResult
     func requestAccessIfNeeded() async -> Bool {
         switch EKEventStore.authorizationStatus(for: .event) {
@@ -69,8 +60,6 @@ final class CalendarService: ObservableObject {
 
     enum CreateError: Error { case accessDenied }
 
-    /// Cria evento a partir de um `NaturalEvent.Draft` — pede acesso na hora
-    /// (Droppy #15/#17: API real só no primeiro uso, nunca no boot).
     func create(_ d: NaturalEvent.Draft) async throws {
         if EKEventStore.authorizationStatus(for: .event) != .fullAccess {
             let granted = try await store.requestFullAccessToEvents()
@@ -85,8 +74,6 @@ final class CalendarService: ObservableObject {
         refresh()
     }
 
-    /// Cria lembrete (sem hora fixa de término) a partir de um `NaturalEvent.Draft`
-    /// com `kind == .reminder` — pede acesso a Lembretes na hora, nunca no boot.
     func createReminder(_ d: NaturalEvent.Draft) async throws {
         if EKEventStore.authorizationStatus(for: .reminder) != .fullAccess {
             let granted = try await store.requestFullAccessToReminders()
@@ -100,12 +87,10 @@ final class CalendarService: ObservableObject {
         try store.save(r, commit: true)
     }
 
-    /// Calendários de evento disponíveis (id, título, cor) — pra lista de toggles em Ajustes.
     func calendars() -> [(id: String, title: String, color: CGColor)] {
         store.calendars(for: .event).map { ($0.calendarIdentifier, $0.title, $0.cgColor) }
     }
 
-    /// Atualiza um evento existente (título/início/fim) — usado pelo popover de edição.
     func update(eventID: String, title: String, start: Date, end: Date) throws {
         guard let ev = store.event(withIdentifier: eventID) else { return }
         ev.title = title
@@ -115,15 +100,12 @@ final class CalendarService: ObservableObject {
         refresh()
     }
 
-    /// Exclui um evento existente — usado pelo popover de edição.
     func delete(eventID: String) throws {
         guard let ev = store.event(withIdentifier: eventID) else { return }
         try store.remove(ev, span: .thisEvent)
         refresh()
     }
 
-    /// Filtro puro de eventos por calendário selecionado — testável sem EventKit.
-    /// `selectedIDs` vazio = sem filtro (todos os calendários).
     nonisolated static func filter<E: CalendarIdentifiable>(events: [E], selectedIDs: [String]) -> [E] {
         guard !selectedIDs.isEmpty else { return events }
         return events.filter { selectedIDs.contains($0.calendarID) }
@@ -147,7 +129,6 @@ final class CalendarService: ObservableObject {
         let meetingURL = MeetingLink.extract(from: e.notes, url: e.url, location: e.location)
         let up = UpcomingEvent(eventID: e.eventIdentifier, title: e.title ?? "Evento", start: e.startDate, end: e.endDate, meetingURL: meetingURL)
         next = up
-        // aviso único aos 10 min
         if up.start.timeIntervalSinceNow < 10 * 60, !warned.contains(up.start) {
             warned.insert(up.start)
             onTimeToLeave?(up)
@@ -155,8 +136,6 @@ final class CalendarService: ObservableObject {
     }
 }
 
-/// Qualquer coisa filtrável por calendário — permite testar `CalendarService.filter`
-/// com uma struct pura, sem depender de EventKit.
 protocol CalendarIdentifiable {
     var calendarID: String { get }
 }

@@ -1,7 +1,6 @@
 import Darwin
 import Foundation
 
-/// Formatação pura de bytes/taxa/percentual — sem estado, testável sem Mach.
 nonisolated enum StatsFormat {
     private static let numberFormatter: NumberFormatter = {
         let f = NumberFormatter()
@@ -12,7 +11,6 @@ nonisolated enum StatsFormat {
         return f
     }()
 
-    /// "0 B", "1,5 KB", "1,2 GB" — pt-BR (vírgula decimal).
     static func bytes(_ b: UInt64) -> String {
         let units = ["B", "KB", "MB", "GB", "TB"]
         var value = Double(b)
@@ -28,12 +26,10 @@ nonisolated enum StatsFormat {
         return "\(n) \(units[unitIndex])"
     }
 
-    /// "3,4 MB/s" — taxa em bytes/segundo.
     static func rate(_ bytesPerSecond: Double) -> String {
         bytes(UInt64(max(bytesPerSecond, 0))) + "/s"
     }
 
-    /// "42%" — clampado em 0…100.
     static func percent(_ p: Double) -> String {
         "\(Int(p.clamped(to: 0...100).rounded()))%"
     }
@@ -45,8 +41,6 @@ private extension Double {
     }
 }
 
-/// Amostragem de CPU/memória/disco/rede a cada 2s — só enquanto a página Sistema
-/// está visível (start/stop via `onAppear`/`onDisappear` da página).
 @MainActor
 final class SystemStats: ObservableObject {
     @Published private(set) var cpuPercent: Double = 0
@@ -60,14 +54,10 @@ final class SystemStats: ObservableObject {
     private var timer: Timer?
     private var lastCPUTicks: (used: UInt64, total: UInt64)?
     private var lastNetSample: (up: UInt64, down: UInt64, date: Date)?
-    /// Duas telas com a página Sistema aberta ao mesmo tempo: o `onDisappear`
-    /// de uma não pode matar a amostragem que a outra ainda usa (#31).
     private lazy var activeCount = ActiveCount(onFirst: { [weak self] in self?.start() },
                                                 onLast: { [weak self] in self?.stop() })
 
-    /// Chamar em `onAppear` da página Sistema — nunca chamar `start()` direto.
     func retain() { activeCount.retain() }
-    /// Chamar em `onDisappear` da página Sistema — nunca chamar `stop()` direto.
     func release() { activeCount.release() }
 
     private func start() {
@@ -91,8 +81,6 @@ final class SystemStats: ObservableObject {
         sampleDisk()
         sampleNetwork()
     }
-
-    // MARK: CPU — host_processor_info delta (PROCESSOR_CPU_LOAD_INFO)
 
     private func sampleCPU() {
         var cpuCount: natural_t = 0
@@ -134,8 +122,6 @@ final class SystemStats: ObservableObject {
         lastCPUTicks = (used, total)
     }
 
-    // MARK: Memória — host_statistics64 (vm_statistics64)
-
     private func sampleMemory() {
         var stats = vm_statistics64()
         var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<integer_t>.size)
@@ -152,8 +138,6 @@ final class SystemStats: ObservableObject {
         memoryTotal = ProcessInfo.processInfo.physicalMemory
     }
 
-    // MARK: Disco — volumeAvailableCapacityForImportantUsageKey/volumeTotalCapacityKey em "/"
-
     private func sampleDisk() {
         let root = URL(fileURLWithPath: "/")
         guard let values = try? root.resourceValues(forKeys: [
@@ -166,8 +150,6 @@ final class SystemStats: ObservableObject {
             diskTotal = UInt64(max(total, 0))
         }
     }
-
-    // MARK: Rede — getifaddrs, delta de if_data.ifi_ibytes/ifi_obytes (sem loopback)
 
     private func sampleNetwork() {
         var ifaddrPtr: UnsafeMutablePointer<ifaddrs>?

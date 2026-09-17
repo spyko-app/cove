@@ -1,13 +1,10 @@
 import AppKit
 
-/// Busca Spotlight (`NSMetadataQuery`) pra ilha: debounce de 250ms, 30
-/// primeiros resultados, sem carregar ícone aqui (fica pro row view).
 @MainActor
 final class SpotlightSearch: ObservableObject {
     struct Result: Identifiable, Equatable { let id: URL; let name: String; let kind: String }
 
     @Published private(set) var results: [Result] = []
-    /// Busca em andamento (debounce + query rodando): a lupa vira orb enquanto isso.
     @Published private(set) var isSearching = false
     private var query: NSMetadataQuery?
     private var debounce: Task<Void, Never>?

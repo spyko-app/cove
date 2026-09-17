@@ -4,8 +4,6 @@ import XCTest
 final class ActivityQueueTests: XCTestCase {
     private let base = Date(timeIntervalSince1970: 1_000_000)
 
-    // MARK: - Ordem FIFO
-
     func testFIFOOrder() {
         var q = ActivityQueue()
         q.enqueue(.notification(app: "A", title: "1"), duration: 4, now: base)
@@ -17,22 +15,16 @@ final class ActivityQueueTests: XCTestCase {
         XCTAssertTrue(q.isEmpty)
     }
 
-    // MARK: - Coalescing por tipo
-
     func testCoalescingKeepsPositionAndReplacesPayload() {
         var q = ActivityQueue()
         q.enqueue(.notification(app: "A", title: "primeira"), duration: 4, now: base)
         q.enqueue(.event(title: "meio", minutes: 1), duration: 4, now: base)
-        // segunda notificação chega depois — mesmo tipo, deve substituir a
-        // primeira MANTENDO a posição (na frente do evento), não ir pro fim.
         q.enqueue(.notification(app: "A", title: "segunda"), duration: 4, now: base)
         let first = q.next(now: base)
         let second = q.next(now: base)
         XCTAssertEqual(first?.activity, .notification(app: "A", title: "segunda"))
         XCTAssertEqual(second?.activity, .event(title: "meio", minutes: 1))
     }
-
-    // MARK: - removeAll(kindKey:) — notificação enfileirada no instante do lock
 
     func testRemoveAllKindKeyDropsOnlyThatKind() {
         var q = ActivityQueue()
@@ -49,12 +41,9 @@ final class ActivityQueueTests: XCTestCase {
         XCTAssertTrue(q.isEmpty)
     }
 
-    // MARK: - Expiração
-
     func testExpiredEntryIsDropped() {
         var q = ActivityQueue()
         q.enqueue(.notification(app: "A", title: "velha"), duration: 4, now: base)
-        // esperou mais que duration*2 (8s) → descarta ao tentar tirar da fila
         let later = base.addingTimeInterval(9)
         XCTAssertNil(q.next(now: later))
         XCTAssertTrue(q.isEmpty)
@@ -74,8 +63,6 @@ final class ActivityQueueTests: XCTestCase {
         let result = q.next(now: base.addingTimeInterval(9))
         XCTAssertEqual(result?.activity, .event(title: "nova", minutes: 1))
     }
-
-    // MARK: - Matriz de decisão
 
     func testHUDOverEventShowsNow() {
         let q = ActivityQueue()

@@ -5,7 +5,6 @@ final class NaturalEventTests: XCTestCase {
     let cal = Calendar(identifier: .gregorian)
 
     func testParsesTitleAndTime() throws {
-        // NSDataDetector resolve "amanhã" contra a data REAL, não contra `now` — o esperado segue o relógio
         let now = Date()
         let tomorrow = cal.date(byAdding: .day, value: 1, to: now)!
         let d = try XCTUnwrap(NaturalEvent.parse("Reunião com Alef amanhã às 15h", now: now, calendar: cal))

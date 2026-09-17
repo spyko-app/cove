@@ -1,8 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// Expandido SEM mídia: coluna de apps à esquerda, preview do app selecionado
-/// à direita (Calendário = mês + próximos eventos; demais = notificações).
 struct AppsPage: View {
     @ObservedObject var coordinator: NotchCoordinator
     let notchTop: CGFloat

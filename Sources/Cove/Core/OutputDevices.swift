@@ -1,8 +1,6 @@
 import CoreAudio
 import Foundation
 
-/// Dispositivos de saída (CoreAudio): lista + troca do padrão. AirPlay
-/// (iPhone/HomePod/TV) aparece aqui quando o macOS o expõe como saída.
 @MainActor
 final class OutputDevices: ObservableObject {
     struct Device: Identifiable, Equatable {

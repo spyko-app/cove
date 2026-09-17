@@ -1,11 +1,6 @@
 import AppKit
 import Foundation
 
-/// Now playing global. macOS 15.4+ bloqueia MediaRemote pra binários não
-/// assinados pela Apple (provado: swift -e funciona, nosso binário recebe dict
-/// vazio). Workaround provado ao vivo: adapter dylib carregada dentro do
-/// /usr/bin/perl (host Apple-assinado) via DynaLoader XSUB — stream de JSON
-/// por stdout, comandos por stdin. Ver adapter/mradapter.m.
 struct NowPlaying: Equatable {
     var title = ""
     var artist = ""
@@ -25,7 +20,6 @@ struct NowPlaying: Equatable {
 @MainActor
 final class MediaRemoteService: ObservableObject {
     @Published var nowPlaying = NowPlaying()
-    /// Quando elapsed foi atualizado pela última vez — o seeker interpola a partir daqui.
     var lastElapsedUpdate = Date()
 
     enum Command: Int32 {
@@ -36,7 +30,6 @@ final class MediaRemoteService: ObservableObject {
     private var stdinPipe: Pipe?
     private var buffer = Data()
 
-    /// dylib + script: no bundle (Resources) ou ao lado do binário (dev).
     private static func adapterPaths() -> (script: String, dylib: String)? {
         let candidates = [
             Bundle.main.resourcePath.map { ($0 + "/adapter.pl", $0 + "/mradapter.dylib") },
@@ -45,7 +38,7 @@ final class MediaRemoteService: ObservableObject {
                 let root = (dir as NSString).deletingLastPathComponent
                 return (root + "/adapter/adapter.pl", root + "/adapter/mradapter.dylib")
             }(),
-        ].compactMap { $0 }   // nunca relativo ao cwd: dylib fora do bundle assinado seria carregável
+        ].compactMap { $0 }
         for (s, d) in candidates
         where FileManager.default.fileExists(atPath: s) && FileManager.default.fileExists(atPath: d) {
             return (s, d)
@@ -72,7 +65,6 @@ final class MediaRemoteService: ObservableObject {
             Task { @MainActor in self?.ingest(data) }
         }
         p.terminationHandler = { [weak self] _ in
-            // adapter morreu (ex.: player sumiu) — religa em 2s
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(2))
                 self?.start()
@@ -84,7 +76,6 @@ final class MediaRemoteService: ObservableObject {
     }
 
     private func ingest(_ data: Data) {
-        // preview sem mídia (captura do HUD em largura total)
         if ProcessInfo.processInfo.environment["COVE_PREVIEW_NOMEDIA"] != nil { return }
         buffer.append(data)
         while let nl = buffer.firstIndex(of: 0x0A) {
@@ -99,7 +90,7 @@ final class MediaRemoteService: ObservableObject {
             np.duration = obj["duration"] as? Double ?? 0
             np.elapsed = obj["elapsed"] as? Double ?? 0
             np.isPlaying = (obj["playing"] as? Int ?? 0) == 1
-            if let t = ProcessInfo.processInfo.environment["COVE_PREVIEW_TITLE"] { np.title = t }  // prova do marquee
+            if let t = ProcessInfo.processInfo.environment["COVE_PREVIEW_TITLE"] { np.title = t }
             if let b64 = obj["artwork"] as? String, let d = Data(base64Encoded: b64) {
                 np.artwork = NSImage(data: d)
                 np.artworkTint = np.artwork?.dominantColor()
@@ -125,7 +116,6 @@ final class MediaRemoteService: ObservableObject {
 }
 
 extension NSImage {
-    /// Cor média do artwork (amostragem 8x8) — tinge a waveform como no Alcove.
     func dominantColor() -> NSColor? {
         guard let tiff = tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) else { return nil }
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, n: CGFloat = 0

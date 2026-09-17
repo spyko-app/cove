@@ -1,8 +1,4 @@
 #!/bin/zsh
-# Gera build/Cove.app a partir do release + adapter nos Resources.
-# Transacional: builda tudo num diretório temporário NO MESMO VOLUME de
-# build/ e só faz `mv` (rename atômico) pro lugar final no fim — nunca
-# deixa um .app pela metade (lição #5/#16).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -52,10 +48,6 @@ TMP_APP="$TMP_DIR/Cove.app"
 mkdir -p "$TMP_APP/Contents/MacOS" "$TMP_APP/Contents/Resources" "$TMP_APP/Contents/Frameworks"
 cp "$BIN" "$TMP_APP/Contents/MacOS/"
 
-# Sparkle é distribuído como xcframework binário (dependência dinâmica —
-# diferente do SwiftTerm, que é fonte estática): SwiftPM deixa o
-# .framework junto do binário em .build/release/. Sem copiar pro
-# Contents/Frameworks + rpath, o app falha com "Library not loaded".
 SPARKLE_FRAMEWORK=".build/release/Sparkle.framework"
 if [ ! -d "$SPARKLE_FRAMEWORK" ]; then
   echo "\033[31merro: $SPARKLE_FRAMEWORK não existe nos produtos do build — o app ficaria sem Sparkle.framework (falha silenciosa depois com 'Library not loaded')\033[0m" >&2
@@ -66,7 +58,6 @@ install_name_tool -add_rpath @executable_path/../Frameworks "$TMP_APP/Contents/M
 
 clang -dynamiclib -fobjc-arc -framework Foundation -o "$TMP_APP/Contents/Resources/mradapter.dylib" adapter/mradapter.m
 cp adapter/adapter.pl "$TMP_APP/Contents/Resources/"
-# sons próprios + ícone
 python3 scripts/make-sounds.py >/dev/null
 cp -R Resources/Sounds "$TMP_APP/Contents/Resources/Sounds"
 if [ ! -f build/AppIcon.icns ]; then
@@ -105,10 +96,6 @@ $SU_PUBLIC_ED_KEY_LINE
 </dict></plist>
 PLIST
 
-# identidade própria = requisito de assinatura estável → TCC (Acessibilidade, FDA)
-# sobrevive a rebuilds. Sem ela, ad-hoc (permissões caem a cada build).
-# --release exige "Developer ID Application" (checado acima, DEV_ID_IDENTITY);
-# builds de dev usam "Cove Studio Dev" (ou ad-hoc se nem essa existir).
 SIGN_ID="-"
 if [ -n "$DEV_ID_IDENTITY" ]; then
   SIGN_ID="$DEV_ID_IDENTITY"
@@ -118,15 +105,9 @@ fi
 
 CODESIGN_EXTRA_ARGS=()
 if [ "$RELEASE_FLAG" = "1" ]; then
-  # --options runtime (hardened runtime) + --timestamp (assinatura com
-  # carimbo de tempo confiável) são exigidos pela notarização da Apple.
   CODESIGN_EXTRA_ARGS=(--options runtime --timestamp)
 fi
 
-# Sparkle exige que os componentes internos (XPCServices, Autoupdate,
-# Updater.app) sejam assinados com a MESMA identidade ANTES do framework
-# e do .app — sem `--deep` (o instalador do Sparkle recusa a rodar e a
-# atualização falha silenciosamente numa conta sem admin).
 NESTED_FRAMEWORK="$TMP_APP/Contents/Frameworks/Sparkle.framework"
 if [ -d "$NESTED_FRAMEWORK" ]; then
   for comp in \
@@ -139,10 +120,6 @@ if [ -d "$NESTED_FRAMEWORK" ]; then
   done
   codesign -f -s "$SIGN_ID" ${CODESIGN_EXTRA_ARGS[@]+"${CODESIGN_EXTRA_ARGS[@]}"} "$NESTED_FRAMEWORK"
 fi
-# --entitlements só no .app final (não nos componentes do Sparkle). O codesign
-# converte o plist pra DER com o parser do AMFI, que NÃO aceita comentários XML
-# ("AMFIUnserializeXML: syntax error"): re-serializa sem eles (o que o Xcode
-# faz por baixo) — o arquivo do repo continua documentado.
 ENTITLEMENTS="$TMP_DIR/Cove.entitlements"
 plutil -convert xml1 -o "$ENTITLEMENTS" Resources/Cove.entitlements
 codesign -f -s "$SIGN_ID" ${CODESIGN_EXTRA_ARGS[@]+"${CODESIGN_EXTRA_ARGS[@]}"} \

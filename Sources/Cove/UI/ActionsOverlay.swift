@@ -1,9 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// Grade de "Ações rápidas" (ex-Ring) DENTRO da ilha — substitui a página do
-/// droplet atual enquanto `coordinator.showActions` está ligado. Sem painel
-/// flutuante próprio: mesma janela, mesmo esconde/mostra do resto do expandido.
 struct ActionsOverlay: View {
     @ObservedObject var coordinator: NotchCoordinator
     let notchTop: CGFloat

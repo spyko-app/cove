@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// Dica animada em loop — nenhum evento real é disparado, é só ilustração.
 struct TourGesturesPage: View {
     @State private var scrollDown = false
     @State private var sidePan: CGFloat = 0

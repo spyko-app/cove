@@ -1,15 +1,12 @@
 import SwiftUI
 
-/// Orb da busca (padrão iOS 27): círculo de 16 pt com gradiente cônico girando
-/// enquanto a busca processa. Sem cor de marca — branco/cinza com um azul do
-/// sistema sutil. Com "reduzir movimento" não gira: só pulsa a opacidade.
 struct SearchOrb: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var spinning = false
     @State private var dim = false
 
     static let size: CGFloat = 16
-    private static let turn: Double = 2.4   // segundos por volta
+    private static let turn: Double = 2.4
 
     private var gradient: AngularGradient {
         AngularGradient(

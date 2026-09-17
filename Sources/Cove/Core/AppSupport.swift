@@ -1,6 +1,5 @@
 import Foundation
 
-/// ~/Library/Application Support/Cove — dados do usuário (cesta, clipboard, memos).
 enum AppSupport {
     static let directory: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

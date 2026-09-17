@@ -7,7 +7,7 @@ final class ConfigTests: XCTestCase {
         let cfg = try JSONDecoder().decode(NotchConfig.self, from: json)
         XCTAssertEqual(cfg.hudDuration, 2.5)
         XCTAssertEqual(cfg.displayOn, "external")
-        XCTAssertTrue(cfg.showVolumeHUD)  // default preservado
+        XCTAssertTrue(cfg.showVolumeHUD)
     }
 
     func testRoundTrip() throws {
@@ -57,8 +57,6 @@ final class ConfigTests: XCTestCase {
         XCTAssertFalse(NotchActivity.event(title: "x", minutes: 1).isHUD)
     }
 
-    // MARK: - Intensidade do Dynamic Glass (F4)
-
     func testDynamicGlassTintDefault() {
         XCTAssertEqual(NotchConfig().dynamicGlassTint, 0.55, accuracy: 0.0001)
     }
@@ -83,8 +81,6 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(back.dynamicGlassTint, 0.25, accuracy: 0.0001)
     }
 
-    // MARK: - Dynamic Glass DESLIGADO por padrão (ilha preta pura, decisão do dono 12/set)
-
     func testDynamicGlassOffByDefault() {
         XCTAssertFalse(NotchConfig().dynamicGlass)
     }
@@ -106,8 +102,6 @@ final class ConfigTests: XCTestCase {
         XCTAssertFalse(back.dynamicGlass)
     }
 
-    // MARK: - Puxar pra baixo abre a Busca
-
     func testPullDownOpensSearchOnByDefault() {
         XCTAssertTrue(NotchConfig().pullDownOpensSearch)
     }
@@ -121,8 +115,6 @@ final class ConfigTests: XCTestCase {
         let json = #"{"pullDownOpensSearch": false}"#.data(using: .utf8)!
         XCTAssertFalse(try JSONDecoder().decode(NotchConfig.self, from: json).pullDownOpensSearch)
     }
-
-    // MARK: - Ilha na tela de bloqueio (SkyLight)
 
     func testShowOnLockScreenOnByDefault() {
         XCTAssertTrue(NotchConfig().showOnLockScreen)

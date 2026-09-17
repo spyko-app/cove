@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Droplet Sistema — CPU/memória/disco/rede em grade 2×2, amostrado a cada 2s
-/// só enquanto pelo menos um painel tem esta página visível
-/// (`SystemStats.retain()`/`release()` — refcount, #31).
 struct StatsPage: View {
     @ObservedObject var stats: SystemStats
     let notchTop: CGFloat

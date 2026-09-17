@@ -1,7 +1,5 @@
 import CoreGraphics
 
-/// Assinatura pura da configuração de telas (id + frame + notch), usada pra
-/// decidir se um `reload()` de fato precisa reconstruir os painéis.
 enum ScreenSignature {
     static func make(_ screens: [(id: UInt32, frame: CGRect, notch: CGRect?)]) -> String {
         screens

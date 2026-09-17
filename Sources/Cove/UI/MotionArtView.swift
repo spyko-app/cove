@@ -1,9 +1,5 @@
 import SwiftUI
 
-/// "Aurora" atrás do card de mídia expandido: 3-4 gradientes radiais suaves
-/// que respiram com o áudio (`WaveformService.levels`). Puramente decorativo
-/// — nunca captura toque, nunca compete com o texto por cima (opacidade baixa
-/// + blend `.plusLighter`).
 struct MotionArtView: View {
     @ObservedObject var waveform: WaveformService
     var tint: Color = .white.opacity(0.3)

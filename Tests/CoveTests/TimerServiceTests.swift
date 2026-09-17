@@ -37,8 +37,6 @@ import XCTest
         XCTAssertEqual(t.session?.total, TimerService.pomodoroBreak)
     }
 
-    /// "+5 min" da atividade expandida: soma no total e no restante, e empurra
-    /// o fim quando está rodando.
     func testExtendSomaNoTotalENoRestante() {
         let t = TimerService(autoTick: false)
         let t0 = Date()

@@ -1,7 +1,5 @@
 import Foundation
 
-/// Símbolo SF pra um dispositivo Bluetooth pelo nome — antes tudo virava
-/// "airpods" (caixa JBL aparecia como fone). Heurística por palavras-chave, puro.
 enum DeviceSymbol {
     static func symbol(for name: String, connected: Bool) -> String {
         let n = name.lowercased()

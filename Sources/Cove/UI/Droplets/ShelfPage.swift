@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// View invisível que só serve pra expor sua `NSView` de anfitriã pro
-/// `NSSharingServicePicker` (que precisa de uma `NSView`/`NSRect` reais pra
-/// ancorar o menu, algo que SwiftUI não dá direto).
 private struct AnchorView: NSViewRepresentable {
     let onResolve: (NSView) -> Void
 
@@ -25,12 +22,9 @@ struct ShelfPage: View {
 
     private var orderedIDs: [UUID] { shelf.items.map(\.id) }
 
-    /// Ordem dos widgets e Quick Actions, do layout reativo do `ShelfStore`
-    /// (mantido em dia por `ShelfStore.bindConfig` — ver #35).
     private var widgets: [String] { shelf.layout.widgets }
     private var quickActionIDs: [String] { shelf.layout.actions }
 
-    /// Seleção atual, ou todos os itens quando nada está selecionado.
     private var actionTargetIDs: [UUID] {
         selection.selected.isEmpty ? shelf.items.map(\.id) : Array(selection.selected)
     }
@@ -201,10 +195,6 @@ struct ShelfPage: View {
                                     selection.clear()
                                 }
                             }
-                            // Nota (T22 #3): o duplo-clique só abre o item; o `TapGesture(count: 1)`
-                            // simultâneo ainda roda e ajusta seleção/âncora pro item clicado — aceitável,
-                            // pois abrir já é uma ação de item único e a seleção resultante (só ele) é a
-                            // esperada por quem vai olhar a cesta em seguida.
                             .simultaneousGesture(TapGesture(count: 2).onEnded { NSWorkspace.shared.open(item.url) })
                             .simultaneousGesture(TapGesture(count: 1).onEnded {
                                 let flags = NSEvent.modifierFlags
@@ -233,17 +223,11 @@ struct ShelfPage: View {
         }
     }
 
-    /// Abre o `NSSharingServicePicker` ancorado na view invisível do footer
-    /// (única `NSView` real que a página SwiftUI expõe).
     private func share(_ ids: [UUID]) {
         guard let shareAnchor else { return }
         shelf.share(ids, from: shareAnchor, rect: shareAnchor.bounds)
     }
 
-    /// Estado agregado calculado 1× por gesto de arrasto (lição #26): se o item
-    /// arrastado faz parte da seleção múltipla, arrasta todos; senão, só ele.
-    /// SwiftUI só entrega um `NSItemProvider` por `.onDrag`; as demais URLs vão
-    /// junto no pasteboard de arrasto do sistema, escritas antes de retornar.
     private func dragURLs(startingWith id: UUID) -> NSItemProvider {
         let ids = selection.isSelected(id) && selection.selected.count > 1 ? Array(selection.selected) : [id]
         let urls = shelf.items.filter { ids.contains($0.id) }.map(\.url)

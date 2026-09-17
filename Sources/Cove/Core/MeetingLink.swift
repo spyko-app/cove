@@ -1,15 +1,11 @@
 import Foundation
 
-/// Extrai o link de reunião (Zoom/Meet/Teams/FaceTime/Webex/Whereby) de um
-/// evento de calendário — puro, sem EventKit, fácil de testar.
 enum MeetingLink {
     private static let hosts = [
         "zoom.us", "meet.google.com", "teams.microsoft.com",
         "facetime.apple.com", "webex.com", "whereby.com",
     ]
 
-    /// Primeira URL http(s) de um host conhecido nas notas, senão na
-    /// localização, senão a `url` do evento (qualquer host).
     static func extract(from notes: String?, url: URL?, location: String?) -> URL? {
         if let notes, let found = firstMeetingURL(in: notes) { return found }
         if let location, let found = firstMeetingURL(in: location) { return found }

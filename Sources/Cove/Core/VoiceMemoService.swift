@@ -2,8 +2,6 @@ import AVFoundation
 import Foundation
 import Speech
 
-/// Gravador de memo de voz com transcrição on-device (SFSpeechRecognizer pt-BR).
-/// Não toca no microfone até `start()` — construir o serviço é inofensivo.
 @MainActor
 final class VoiceMemoService: ObservableObject {
     @Published private(set) var isRecording = false
@@ -101,10 +99,6 @@ final class VoiceMemoService: ObservableObject {
     @discardableResult
     func stop() async -> URL? { stopSync() }
 
-    /// Mesmo trabalho de `stop()`, sem `async` — chamável direto de
-    /// `NotchCoordinator.shutdown()`, que precisa que o engine pare e o
-    /// arquivo feche ANTES do processo sair, sem depender de uma `Task` que
-    /// pode nunca rodar (o app já está saindo).
     @discardableResult
     func stopSync() -> URL? {
         startRequested = false

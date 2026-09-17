@@ -1,8 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// Janela do editor de captura: setas, retângulo, borrão, badges numeradas
-/// e fundo/padding, com exportação pra PNG via `ImageRenderer`.
 @MainActor
 final class CaptureEditorManager: NSObject, NSWindowDelegate {
     static let shared = CaptureEditorManager()
@@ -335,7 +333,6 @@ private extension Color {
     }
 }
 
-/// Repassa atalhos de teclado (⌘Z/⌘S/⌘C/Esc) pro editor via `NSView` invisível.
 private struct KeyCatcher: NSViewRepresentable {
     let onUndo: () -> Void
     let onExport: () -> Void

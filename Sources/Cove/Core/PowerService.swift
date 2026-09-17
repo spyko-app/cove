@@ -1,7 +1,6 @@
 import Foundation
 import IOKit.ps
 
-/// Bateria e modo de baixa energia — eventos pro peek da ilha.
 @MainActor
 final class PowerService: ObservableObject {
     struct BatteryState: Equatable {
@@ -12,8 +11,6 @@ final class PowerService: ObservableObject {
 
     var onBatteryEvent: ((BatteryState) -> Void)?
     var onLowPowerMode: ((Bool) -> Void)?
-    /// Estado ATUAL, publicado a cada notificação do IOPS (widget de bateria
-    /// da tela de bloqueio) — `nil` = sem bateria interna (Mac de mesa).
     @Published private(set) var state: BatteryState?
 
     private var last = BatteryState()
@@ -61,7 +58,6 @@ final class PowerService: ObservableObject {
         guard let now = Self.read() else { return }
         defer { last = now }
         if state != now { state = now }
-        // evento: plugou/desplugou, começou/parou de carregar, ou cruzou o limiar
         if now.onAC != last.onAC || now.charging != last.charging {
             onBatteryEvent?(now)
         } else if now.percent != last.percent, !now.onAC,

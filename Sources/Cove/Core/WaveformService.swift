@@ -2,13 +2,8 @@ import AudioToolbox
 import CoreAudio
 import Foundation
 
-/// Waveform AO VIVO do áudio do sistema — Core Audio process tap global
-/// (macOS 14.4+): CATapDescription → AudioHardwareCreateProcessTap → aggregate
-/// device com o tap → IOProc lê buffers e publica níveis RMS suavizados.
-/// TCC: NSAudioCaptureUsageDescription (prompt de captura no 1º uso).
 @MainActor
 final class WaveformService: ObservableObject {
-    /// 5 barras, 0…1, suavizadas.
     @Published var levels: [Float] = Array(repeating: 0, count: 5)
     private(set) var running = false
 
@@ -18,14 +13,13 @@ final class WaveformService: ObservableObject {
     private var ring: [Float] = []
 
     func start() {
-        guard !running, AppEnvironment.isBundledApp else { return }  // TCC
+        guard !running, AppEnvironment.isBundledApp else { return }
         guard let desc = NSClassFromString("CATapDescription") as? NSObject.Type else { return }
 
-        // tap global estéreo, mixdown, excluindo ninguém
         let tapDesc = desc.init()
         tapDesc.setValue(UUID(), forKey: "UUID")
         tapDesc.setValue([], forKey: "processes")
-        tapDesc.setValue(true, forKey: "exclusive")  // global: todos exceto lista (vazia)
+        tapDesc.setValue(true, forKey: "exclusive")
         tapDesc.setValue(true, forKey: "mixdown")
         tapDesc.setValue(false, forKey: "mono")
         tapDesc.setValue(true, forKey: "privateTap")
@@ -35,7 +29,6 @@ final class WaveformService: ObservableObject {
               tap != kAudioObjectUnknown else { return }
         tapID = tap
 
-        // aggregate device contendo só o tap
         guard let tapUID = tapDesc.value(forKey: "UUID") as? UUID else { return }
         let aggDesc: [String: Any] = [
             kAudioAggregateDeviceNameKey as String: "CoveTap",
@@ -91,14 +84,11 @@ final class WaveformService: ObservableObject {
 
     private var lastPublish = ContinuousClock.now
     private func push(_ rms: Float) {
-        // IO block chega a ~100Hz; publicar @Published nessa taxa = relayout SwiftUI
-        // contínuo (15% CPU medido). Acumula e publica a 30Hz, ignorando ruído.
         ring.append(rms)
         if ring.count > 5 { ring.removeFirst(ring.count - 5) }
         let now = ContinuousClock.now
         guard now - lastPublish >= .milliseconds(33) else { return }
         lastPublish = now
-        // suaviza: 60% valor novo, 40% anterior
         var out = levels
         for i in 0..<5 {
             let v = i < ring.count ? ring[ring.count - 1 - i] : 0

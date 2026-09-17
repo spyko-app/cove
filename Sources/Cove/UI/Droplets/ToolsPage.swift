@@ -1,9 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// Menu de modo de captura — usado pelo cartão de Ferramentas e pela ação
-/// "Capturar" da grade de Ações rápidas (aperta e segura abre o menu; toque
-/// solto continua sendo região, o padrão).
 @MainActor func popCaptureModeMenu(_ coordinator: NotchCoordinator) {
     NotchActions.popMenu([
         ("Região", { coordinator.capture(.region, to: .shelf) }),
@@ -48,7 +45,6 @@ struct ToolsPage: View {
     }
 }
 
-/// Botão que ocupa o cartão inteiro: realce retangular no hover, encolhe ao pressionar.
 struct CardButtonStyle: ButtonStyle {
     @State private var over = false
     func makeBody(configuration: Configuration) -> some View {
@@ -81,9 +77,6 @@ private struct ToolCard<Content: View>: View {
     }
 }
 
-/// Anatomia comum de todo cartão: linha 1 = ícone + título (+ status opcional
-/// à direita), linha 2 = controles — empilhados verticalmente pra caber nas
-/// colunas estreitas da grade de 3.
 private struct ToolCardRow<Icon: View, Trailing: View, Controls: View>: View {
     let title: String
     let icon: Icon
@@ -129,8 +122,6 @@ private struct ToolCardRow<Icon: View, Trailing: View, Controls: View>: View {
     }
 }
 
-/// Chip-cápsula compartilhado pelos controles de todo cartão de ferramenta.
-/// Hover/press cobrem exatamente o formato da cápsula (não só o glifo).
 private struct ToolChip: View {
     var symbol: String? = nil
     var label: String? = nil
@@ -170,8 +161,6 @@ private struct ToolChipButtonStyle: ButtonStyle {
     }
 }
 
-/// Botão ícone+rótulo empilhado (usado na Captura): hover/press cobrem
-/// ícone e rótulo juntos, não só o glifo (diferente do NotchHover circular).
 private struct ToolIconButton: View {
     let symbol: String
     let label: String
@@ -284,7 +273,6 @@ private struct TimerCard: View {
                             editingCustom = false
                         }
                 } else if let s = timers.session, s.label == "Timer" {
-                    // timer rodando: tempo + pausar/retomar + parar (antes só dava pra iniciar)
                     HStack(spacing: 4) {
                         Text(String(format: "%02d:%02d", s.remaining / 60, s.remaining % 60))
                             .font(.system(size: 10, weight: .semibold).monospacedDigit())
@@ -351,7 +339,6 @@ private struct HighAlertCard: View {
     private func mmss(_ s: Int) -> String { String(format: "%02d:%02d", s / 60, s % 60) }
 }
 
-/// Captura, OCR e cor num único card — segurar/clique-direito na Cesta abre o menu de modo.
 private struct CaptureCard: View {
     @ObservedObject var coordinator: NotchCoordinator
     @ObservedObject private var screenRecorder: ScreenRecorder
@@ -465,7 +452,6 @@ private struct RecordCard: View {
 
     private func mmss(_ s: Int) -> String { String(format: "%02d:%02d", s / 60, s % 60) }
 
-    /// A ilha está em foco no clique — PasteAtCursor mira no último app não-Cove.
     private func pasteTranscript() {
         let pasted = PasteAtCursor.paste(voice.transcript)
         coordinator.notify(app: "Memo", title: pasted ? "Transcrição colada" : "Não foi possível colar (app alvo ou Acessibilidade)")
@@ -520,8 +506,6 @@ private struct BatteryCard: View {
         return "Bateria"
     }
 
-    // Sem estado publicado pelo coordinator pra bateria — reamostra a cada
-    // 30s enquanto o card está visível (item 9 da auditoria).
     var body: some View {
         TimelineView(.periodic(from: .now, by: 30)) { _ in
             let state = PowerService.read()

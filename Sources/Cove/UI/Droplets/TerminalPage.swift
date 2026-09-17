@@ -1,7 +1,6 @@
 import SwiftTerm
 import SwiftUI
 
-/// Instância única do shell — sobrevive à troca de páginas pra não matar o processo.
 @MainActor
 final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate, ObservableObject {
     static let shared = TerminalSession()
@@ -14,8 +13,6 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate, Observa
         return v
     }()
 
-    /// cwd do shell da ilha, atualizado via OSC 7 (`hostCurrentDirectoryUpdate`).
-    /// Cai pro home quando o shell ainda não emitiu nenhum OSC 7.
     @Published private(set) var currentDirectory: String = NSHomeDirectory()
 
     private var started = false
@@ -28,12 +25,6 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate, Observa
     func startIfNeeded() {
         guard !started else { return }
         started = true
-        // precmd emite OSC 7 (file://host/cwd) a cada prompt novo. O hook vive num
-        // .zshrc próprio via ZDOTDIR (não em `-c ...; exec zsh`, que perderia a função):
-        // o rc devolve ZDOTDIR ao HOME, carrega os rcs do usuário e só então registra o hook.
-        // capturado ANTES de remover ZDOTDIR do env — se o usuário já customiza
-        // ZDOTDIR (oh-my-zsh, prezto etc.), o rc gerado precisa devolver pra ELE,
-        // não pro HOME (senão os rcs reais do usuário nunca são carregados).
         let userZDOTDIR = ProcessInfo.processInfo.environment["ZDOTDIR"] ?? NSHomeDirectory()
         var env = ProcessInfo.processInfo.environment.map { "\($0.key)=\($0.value)" }
         if !env.contains(where: { $0.hasPrefix("TERM=") }) { env.append("TERM=xterm-256color") }
@@ -51,8 +42,6 @@ final class TerminalSession: NSObject, LocalProcessTerminalViewDelegate, Observa
         )
     }
 
-    /// Diretório temporário com um .zshrc que encadeia os rcs do usuário + hook OSC 7.
-    /// `userZDOTDIR` é o ZDOTDIR real do usuário (ou HOME se ele não define um).
     private static func makeZDOTDIR(userZDOTDIR: String) -> URL? {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("cove-zsh", isDirectory: true)
         let rc = """
@@ -110,7 +99,6 @@ struct TerminalPage: View {
     }
 }
 
-/// Menu "↗" — abre o cwd atual da ilha num terminal externo, ou copia o caminho.
 private struct TerminalHandoffMenu: View {
     @ObservedObject private var session = TerminalSession.shared
     @State private var installed: [TerminalApp] = TerminalApp.installed()
@@ -150,8 +138,6 @@ private struct TerminalHostView: NSViewRepresentable {
         let container = NSView()
         TerminalSession.shared.startIfNeeded()
         let t = TerminalSession.shared.view
-        // instância única sobrevive à troca de página — nunca deixa constraint
-        // morta apontando pra um container antigo ao reentrar (Droppy lição #TerminalPage).
         if t.superview !== container {
             if let old = t.superview {
                 NSLayoutConstraint.deactivate(old.constraints.filter { $0.firstItem === t || $0.secondItem === t })

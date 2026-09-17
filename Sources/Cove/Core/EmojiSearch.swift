@@ -1,14 +1,10 @@
 import Foundation
 
-/// Busca pura no catálogo de emoji — sem estado, sem disco (testável isolado).
 enum EmojiSearch {
-    /// Normaliza pra comparação: minúsculo + sem diacríticos (ex.: "coração" → "coracao").
     static func normalize(_ s: String) -> String {
         s.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
     }
 
-    /// `q` vazio → recentes (na ordem, pelo `char`) seguidos do catálogo agrupado.
-    /// `q` não vazio → nome/keywords batendo (case/diacrítico-insensível), recentes primeiro.
     static func matches(_ q: String, in catalog: [Emoji], recents: [String] = []) -> [Emoji] {
         let trimmed = q.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {

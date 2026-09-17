@@ -3,8 +3,6 @@ import XCTest
 
 final class MotionMathTests: XCTestCase {
 
-    // MARK: - smooth
-
     func testSmoothAlphaOneUsesNext() {
         let result = MotionMath.smooth(prev: [0, 0, 0], next: [0.4, 0.8, 1], alpha: 1)
         XCTAssertEqual(result, [0.4, 0.8, 1])
@@ -31,8 +29,6 @@ final class MotionMathTests: XCTestCase {
         let result = MotionMath.smooth(prev: [], next: [0.6, 0.7], alpha: 0.3)
         XCTAssertEqual(result, [0.6, 0.7])
     }
-
-    // MARK: - energy
 
     func testEnergyMean() {
         XCTAssertEqual(MotionMath.energy([0, 0.5, 1]), 0.5, accuracy: 0.0001)

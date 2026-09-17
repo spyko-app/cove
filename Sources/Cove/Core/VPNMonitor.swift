@@ -1,8 +1,6 @@
 import Foundation
 import SystemConfiguration
 
-/// VPN on/off — peek na ilha + timer de sessão ambiente. Sobe/desce olhando
-/// interfaces `utunN` com endereço IPv4/IPv6 via `SCDynamicStore`.
 @MainActor
 final class VPNMonitor {
     enum VPNEvent: Equatable { case up, down }
@@ -60,10 +58,6 @@ final class VPNMonitor {
         onEvent?(event)
     }
 
-    /// Primeira leitura no `init`: só registra o estado do túnel que já
-    /// existia (Screen Time, Tailscale, VPN corporativa always-on) — nunca
-    /// emite evento nem marca `sessionStart` (início desconhecido, não é
-    /// uma sessão nova iniciada pelo app — lição do reviewer, fix round 1).
     private func prime() {
         isUp = Self.primeState(activeInterfaces: currentActiveInterfaces())
         sessionStart = nil
@@ -76,13 +70,10 @@ final class VPNMonitor {
         return Set(Self.interfaceNames(fromKeys: keys))
     }
 
-    /// Máquina de estado pura: prime só registra se já tem túnel ativo,
-    /// nunca emite evento (não sabemos se é sessão nova ou preexistente).
     static func primeState(activeInterfaces: Set<String>) -> Bool {
         !activeInterfaces.isEmpty
     }
 
-    /// `State:/Network/Interface/utun3/IPv4` → `utun3`.
     static func interfaceNames(fromKeys keys: [String]) -> [String] {
         keys.compactMap { key in
             let parts = key.split(separator: "/")
@@ -91,8 +82,6 @@ final class VPNMonitor {
         }
     }
 
-    /// Máquina de estado pura: sobe/cai/idempotente (subir de novo ou cair
-    /// de novo com o mesmo conjunto de interfaces não emite nada — lição #1).
     static func transition(previous: Bool, activeInterfaces: Set<String>) -> VPNEvent? {
         let next = !activeInterfaces.isEmpty
         guard next != previous else { return nil }

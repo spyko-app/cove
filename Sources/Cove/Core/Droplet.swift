@@ -1,6 +1,5 @@
 import Foundation
 
-/// Página da ilha expandida. Ordem em `NotchConfig.enabledDroplets`; mídia sempre primeiro quando toca.
 enum Droplet: String, CaseIterable, Codable {
     case media, apps, shelf, clipboard, tools, search, terminal, notifications, stats, notes, converter, emoji
 
@@ -27,8 +26,6 @@ enum Droplet: String, CaseIterable, Codable {
         }
     }
 
-    /// Página com ScrollView/lista própria: o monitor de scroll do painel deixa o
-    /// evento passar direto pro conteúdo em vez de virar página/faixa (C1).
     var scrollsInternally: Bool {
         switch self {
         case .shelf, .clipboard, .search, .terminal, .notifications: true

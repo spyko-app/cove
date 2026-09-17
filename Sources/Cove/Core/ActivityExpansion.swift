@@ -1,33 +1,22 @@
 import Foundation
 
-/// Ação executável a partir da vista expandida da atividade (região bottom).
-/// Espelha o `LiveActivityIntent` do iOS 27: o botão não abre o app, executa
-/// direto no coordinator. Enum puro — a UI só descreve, quem executa é o
-/// `NotchCoordinator.perform(_ action: ActivityAction)`.
 enum ActivityAction: Equatable {
-    /// Pausa/retoma o timer (ou o Pomodoro) em andamento.
     case timerToggle
     case timerStop
-    /// Estende a sessão do timer em N segundos.
     case timerExtend(Int)
     case highAlertToggle
     case highAlertStop
-    /// Entra na reunião (link do convite).
     case joinMeeting(URL)
     case openCalendar
-    /// Reagenda SÓ o aviso local do evento em N segundos (não mexe no convite).
     case snoozeEvent(Int)
-    /// Foca a página Notificações com o campo de resposta.
     case replyNotification
     case openNotifications
-    /// Abre o menu de saída de áudio (mesmo menu do `OutputPicker`).
     case switchOutput
     case openBatterySettings
     case stopRecording
     case stopScreenRecording
 }
 
-/// Um botão-cápsula da região bottom.
 struct QuickAction: Equatable, Identifiable {
     let id: String
     let title: String
@@ -35,22 +24,14 @@ struct QuickAction: Equatable, Identifiable {
     let action: ActivityAction
 }
 
-/// Vista expandida da atividade em 4 regiões (iOS 27): leading = ícone,
-/// center = título + subtítulo, trailing = valor grande, bottom = ações.
-/// Tudo puro e testável: nenhuma leitura de `Date()` implícita, nenhum
-/// serviço injetado — o estado que a tabela precisa entra por parâmetro.
 enum ActivityExpansion {
-    /// Painel do sistema de Bateria (Ajustes do macOS) — sem API pública de
-    /// "Modo economia", o botão abre o painel.
     static let batterySettingsURL = "x-apple.systempreferences:com.apple.Battery-Settings.extension"
 
     struct Regions: Equatable {
         var symbol: String
-        /// Nome semântico da cor do ícone (§7 da ILHA-SPEC) — a UI traduz.
         var tint: Tint
         var title: String
         var subtitle: String
-        /// Valor tabular grande da região trailing (`nil` = sem valor).
         var value: String?
         var actions: [QuickAction]
     }
@@ -59,13 +40,9 @@ enum ActivityExpansion {
         case white, red, orange, yellow, green, purple, gray
     }
 
-    /// Estado externo de que a tabela depende — passado por quem chama,
-    /// nunca lido de singleton (mantém a função pura).
     struct Context: Equatable {
         var now = Date()
-        /// Timer/Pomodoro rodando agora (decide "Pausar" × "Retomar").
         var timerRunning = true
-        /// Gravação de tela parou com erro (`ScreenRecorder.lastError != nil`).
         var recordingFailed = false
 
         init(now: Date = Date(), timerRunning: Bool = true, recordingFailed: Bool = false) {
@@ -75,7 +52,6 @@ enum ActivityExpansion {
         }
     }
 
-    /// Alerta de prioridade alta: abre a vista expandida sozinha (F1).
     static func isAlerting(_ a: NotchActivity, context: Context = Context()) -> Bool {
         switch a {
         case .battery(let s): return !s.onAC && s.percent <= 10
@@ -88,7 +64,6 @@ enum ActivityExpansion {
         }
     }
 
-    /// Ações da região bottom por tipo. Tipos sem ação devolvem `[]`.
     static func actions(for a: NotchActivity, context: Context = Context()) -> [QuickAction] {
         switch a {
         case .timer:
@@ -99,8 +74,6 @@ enum ActivityExpansion {
                 QuickAction(id: "timer.stop", title: "Parar", symbol: "stop.fill", action: .timerStop),
                 QuickAction(id: "timer.plus5", title: "+5 min", symbol: "plus", action: .timerExtend(5 * 60)),
             ]
-        // High Alert não tem "pausar" na API (é uma IOPMAssertion ligada ou
-        // não) — um botão honesto de desligar em vez de Pausar/Retomar falso.
         case .highAlert:
             return [QuickAction(id: "alert.stop", title: "Desligar", symbol: "stop.fill", action: .highAlertStop)]
         case .event:
@@ -130,14 +103,11 @@ enum ActivityExpansion {
             return [QuickAction(id: "rec.stop", title: "Parar", symbol: "stop.fill", action: .stopRecording)]
         case .screenRecording:
             return [QuickAction(id: "screenrec.stop", title: "Parar", symbol: "stop.fill", action: .stopScreenRecording)]
-        // VPN não tem reconexão por API pública (nem `VPNMonitor` nem
-        // NetworkExtension sem perfil próprio) — sem ação, só informa.
         default:
             return []
         }
     }
 
-    /// As 4 regiões da vista expandida.
     static func regions(for a: NotchActivity, context: Context = Context()) -> Regions {
         let acts = actions(for: a, context: context)
         switch a {
@@ -224,7 +194,6 @@ enum ActivityExpansion {
         }
     }
 
-    /// `mm:ss` (ou `h:mm:ss` acima de 1h) — tabular, igual ao peek.
     static func mmss(_ seconds: Int) -> String {
         let s = max(0, seconds)
         if s >= 3600 {

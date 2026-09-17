@@ -1,6 +1,5 @@
 import Foundation
 
-/// Timer/Pomodoro da ilha: sessão única com contagem regressiva.
 @MainActor
 final class TimerService: ObservableObject {
     struct Session: Equatable { var label: String; var total: Int; var remaining: Int; var isRunning: Bool }
@@ -30,8 +29,6 @@ final class TimerService: ObservableObject {
     }
     func stop() { session = nil; endDate = nil }
 
-    /// Estende a sessão em `seconds` (ação "+5 min" da atividade expandida):
-    /// soma no total E no restante; se estiver rodando, empurra o `endDate`.
     func extend(by seconds: Int, now: Date = Date()) {
         guard var s = session, seconds > 0 else { return }
         s.total += seconds

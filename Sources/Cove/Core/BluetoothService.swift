@@ -2,7 +2,6 @@ import Foundation
 import IOBluetooth
 import IOKit
 
-/// Conexão/desconexão de dispositivos Bluetooth (AirPods etc.) — peek na ilha.
 final class BluetoothService: NSObject {
     var onDeviceEvent: (@Sendable (_ name: String, _ connected: Bool) -> Void)?
 
@@ -10,7 +9,6 @@ final class BluetoothService: NSObject {
         super.init()
         IOBluetoothDevice.register(forConnectNotifications: self,
                                    selector: #selector(deviceConnected(_:device:)))
-        // dispositivos já conectados: observa desconexão
         for d in IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice] ?? []
         where d.isConnected() {
             d.register(forDisconnectNotification: self,
@@ -31,9 +29,6 @@ final class BluetoothService: NSObject {
         note.unregister()
     }
 
-    /// Bateria de AirPods/fones Apple via IORegistry
-    /// (AppleDeviceManagementHIDEventService expõe BatteryPercent* quando
-    /// conectado) — sem BLE privado, sem TCC.
     static func appleDeviceBattery(named name: String) -> (left: Int?, right: Int?, case_: Int?)? {
         var iter: io_iterator_t = 0
         guard IOServiceGetMatchingServices(

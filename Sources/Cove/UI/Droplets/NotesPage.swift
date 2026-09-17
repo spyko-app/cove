@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// Droplet Notas — lista de `.md` (AppSupport ou vault Obsidian) à esquerda,
-/// editor à direita. Autosave debounced 800ms + salva ao sair da página.
 struct NotesPage: View {
     @ObservedObject var store: NotesStore
     let notchTop: CGFloat
@@ -37,11 +35,9 @@ struct NotesPage: View {
     private func handleExternalChange() {
         guard let url = selection, store.wasModifiedExternally(url) else { return }
         if saveTask == nil {
-            // sem edição pendente — recarrega direto
             text = store.load(url)
             showReloadButton = false
         } else {
-            // edição pendente — não pisa no texto do usuário, só avisa
             showReloadButton = true
         }
     }
@@ -146,8 +142,6 @@ struct NotesPage: View {
         .padding(8)
         .background(RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.06)))
     }
-
-    // MARK: - Ações
 
     private func selectFirstIfNeeded() {
         if selection == nil, let first = store.notes.first { selectNote(first.id) }

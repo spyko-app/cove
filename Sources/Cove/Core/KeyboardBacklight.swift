@@ -1,8 +1,5 @@
 import Foundation
 
-/// Backlight do teclado via CoreBrightness privado (KeyboardBrightnessClient).
-/// Mesmo padrão dlopen + NSClassFromString dos outros serviços; sem a classe,
-/// `available == false` e as teclas F5/F6 seguem pro sistema.
 @MainActor
 final class KeyboardBacklight {
     private static let handle = dlopen(

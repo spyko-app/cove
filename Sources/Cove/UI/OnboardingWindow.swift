@@ -1,9 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// Onboarding como tour de 5 páginas (pager), com demo ao vivo da ilha.
-/// Só abre na primeira execução (config.onboardingDone). Nenhuma permissão
-/// é pedida no lançamento — a página 5 só pede ao clicar em cada linha.
 @MainActor
 final class OnboardingWindowManager {
     static let shared = OnboardingWindowManager()

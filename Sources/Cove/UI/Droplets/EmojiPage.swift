@@ -1,9 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// Droplet Emoji — busca por nome/keyword (pt-BR + en), recentes MRU, grade 10
-/// colunas. ↩ agora cola no cursor quando a Acessibilidade está confiada
-/// (`AXIsProcessTrusted`, via `PasteAtCursor` — T36); ⇧↩ só copia pro pasteboard.
 struct EmojiPage: View {
     @ObservedObject var store: EmojiStore
     var coordinator: NotchCoordinator?

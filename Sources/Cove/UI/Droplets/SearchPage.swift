@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Busca Spotlight na ilha: campo com foco automático, lista com ícone/nome/pasta,
-/// Enter abre, ⌘Enter revela no Finder. Também reconhece linguagem natural pra
-/// criar evento e atalho pra nota do Obsidian.
 struct SearchPage: View {
     @ObservedObject var coordinator: NotchCoordinator
     let notchTop: CGFloat
@@ -25,7 +22,6 @@ struct SearchPage: View {
                             .font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
                     }
                 }
-                // slot fixo: a lupa de 11pt e o orb de 16pt não podem mexer no campo
                 .frame(width: SearchOrb.size, height: SearchOrb.size)
                 TextField("Buscar ou perguntar", text: $query)
                     .textFieldStyle(.plain).font(.system(size: 12)).foregroundStyle(.white)
@@ -225,8 +221,6 @@ struct SearchPage: View {
     }
 }
 
-/// Linha de resultado: nome/ícone abre, "···" mantém o menu completo, e um
-/// olho aparece só no hover pra Quick Look direto (sem precisar de teclado).
 private struct ResultRow<Actions: View>: View {
     let result: SpotlightSearch.Result
     let selected: Bool
@@ -276,7 +270,6 @@ private struct ResultRow<Actions: View>: View {
     }
 }
 
-/// Ícone carregado sob demanda (não durante `collect`, que fica só com os 30 paths).
 private struct ResultIcon: View {
     let url: URL
 

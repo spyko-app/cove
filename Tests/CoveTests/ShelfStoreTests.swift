@@ -18,7 +18,6 @@ import XCTest
         XCTAssertEqual(s.items.map(\.url.lastPathComponent), ["a.txt", "b.txt"])
 
         let again = ShelfStore(storage: file)
-        // init verifica fileExists fora da main thread (#25) — itens só aparecem depois.
         try await Task.sleep(for: .milliseconds(200))
         XCTAssertEqual(again.items.count, 2)
 
@@ -41,10 +40,9 @@ import XCTest
 
         let seed = ShelfStore(storage: file)
         seed.add([existing, missing])
-        try FileManager.default.removeItem(at: missing) // some depois de adicionado, antes do reload
+        try FileManager.default.removeItem(at: missing)
 
         let reloaded = ShelfStore(storage: file)
-        // Carga otimista: os dois itens aparecem de cara, mesmo antes de verificar.
         XCTAssertEqual(reloaded.items.count, 2)
 
         await reloaded.verificationTask?.value

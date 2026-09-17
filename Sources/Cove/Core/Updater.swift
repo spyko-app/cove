@@ -1,8 +1,6 @@
 import Foundation
 import Sparkle
 
-/// Wrapper do Sparkle 2. Só existe no app empacotado — nunca em testes/dev
-/// binary (Sparkle exige bundle .app válido com Info.plist assinado).
 @MainActor
 final class Updater: NSObject {
 
@@ -21,9 +19,6 @@ final class Updater: NSObject {
     }
 }
 
-/// Canal de atualização (`stable` por padrão, `nightly` opt-in). Lido de
-/// `UserDefaults` — `Config.swift` é propriedade de outra frente (T27); o
-/// toggle na tela de Ajustes vem depois. Ver task-30-brief.md.
 enum UpdateChannel {
     static let defaultsKey = "updateChannel"
 
@@ -32,8 +27,6 @@ enum UpdateChannel {
     }
 }
 
-/// Checagem pura usada por `scripts/make-app.sh` (via teste) pra garantir
-/// que VERSION e Resources/Info.plist nunca divergem (lições #5/#16).
 enum VersionCheck {
     static func matches(plist: String, version: String) -> Bool {
         let a = plist.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -43,8 +36,6 @@ enum VersionCheck {
 }
 
 extension Updater: SPUUpdaterDelegate {
-    // nonisolated: Sparkle chama de fora do MainActor. UserDefaults é
-    // thread-safe e UpdateChannel não é isolado — sem assumeIsolated.
     nonisolated func allowedChannels(for updater: SPUUpdater) -> Set<String> {
         UpdateChannel.current == "nightly" ? ["nightly"] : []
     }

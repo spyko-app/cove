@@ -1,12 +1,9 @@
 import Foundation
 
-/// Parser de evento de calendário em linguagem natural (pt-BR) via NSDataDetector.
 enum NaturalEvent {
     enum Kind: Equatable { case event, reminder }
     struct Draft: Equatable { var title: String; var start: Date; var end: Date; var kind: Kind = .event }
 
-    /// Prefixos que marcam a frase como lembrete em vez de evento — ordem importa
-    /// (mais específico primeiro pra não sobrar "de"/"a" no título).
     private static let reminderPrefixes = [
         "me lembra de ", "me lembra ", "lembrete de ", "lembrete ", "lembrar de ", "lembrar ",
     ]

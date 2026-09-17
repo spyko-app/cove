@@ -2,33 +2,22 @@ import AppKit
 import Foundation
 import ScriptingBridge
 
-/// Modo de repetição, mapeado do enum nativo do player. Spotify só expõe um
-/// booleano (`repeating`) — sem distinguir "uma faixa" de "tudo" — então lá
-/// vira sempre `.off`/`.all`; `.one` só é alcançável via Music.app.
 enum RepeatMode: Equatable {
     case off, all, one
 }
 
-/// Estado de shuffle/repeat/favorito do player ativo — struct pura, sem IO,
-/// só o suficiente pra UI decidir símbolo/tint (`symbol(for:)`, testável sem
-/// ScriptingBridge nem player nenhum rodando).
 struct PlayerState: Equatable {
     var shuffle = false
     var repeatMode: RepeatMode = .off
-    /// nil = player não expõe favorito (Spotify); Bool = estado real (Music).
     var favorite: Bool?
     var supportsFavorite = false
 
-    /// Um controle do card de mídia — puro, testável sem ScriptingBridge.
     enum Control: Equatable {
         case shuffle(Bool)
         case repeatMode(RepeatMode)
         case favorite(Bool?)
     }
 
-    /// Mapeamento estado→símbolo SF Symbols + se deve aparecer "tintado" (ativo).
-    /// shuffle→"shuffle" (tintado se ligado) · repeat off→"repeat" apagado ·
-    /// all→"repeat" tintado · one→"repeat.1" tintado · favorito→"heart"/"heart.fill".
     static func symbol(for control: Control) -> (name: String, tinted: Bool) {
         switch control {
         case .shuffle(let on):
@@ -45,8 +34,6 @@ struct PlayerState: Equatable {
     }
 }
 
-/// Os dois players suportados via ScriptingBridge — "Fila" (Playing Next) não
-/// entra, nenhum dos dois expõe API pra isso.
 enum Player: Equatable, CaseIterable {
     case music, spotify
 
@@ -58,25 +45,11 @@ enum Player: Equatable, CaseIterable {
     }
 }
 
-/// Controla shuffle/repeat/favorito do Music.app/Spotify via ScriptingBridge
-/// dinâmico (KVC sobre `SBApplication`/`SBObject` — sem header gerado, só
-/// nomes de propriedade documentados nos respectivos `.sdef`). A 1ª chamada
-/// dispara o TCC de Automation (texto em `NSAppleEventsUsageDescription`,
-/// Info.plist + `scripts/make-app.sh`).
-///
-/// Polling de 2s ligado/desligado por `NotchCoordinator.updatePlayerBridgePolling()`
-/// — só enquanto a ilha está expandida na página de mídia E algum dos dois
-/// players está rodando. A construção da classe em si não toca ScriptingBridge
-/// (nada de `SBApplication` no `init`) — só `refresh()`/`toggle*()` tocam, e só
-/// disparam quando o player alvo está `isRunning` (nunca auto-lança o app).
 @MainActor
 final class PlayerBridge: ObservableObject {
     @Published private(set) var state = PlayerState()
     @Published private(set) var isAvailable = false
 
-    /// Título da faixa exibida no card (`MediaRemoteService.nowPlaying.title`),
-    /// injetado pelo `NotchCoordinator` — usado pra desempatar Music×Spotify
-    /// quando os dois estão rodando. Chamado a cada tick do polling.
     var nowPlayingTitleProvider: (() -> String?)?
 
     private var timer: Timer?
@@ -103,9 +76,6 @@ final class PlayerBridge: ObservableObject {
         for observer in terminationObservers { center.removeObserver(observer) }
     }
 
-    /// O player ativo terminou (ou um novo apareceu) — reavalia sem esperar o
-    /// próximo tick do timer. Se nenhum player suportado mais roda, para o
-    /// polling e limpa o estado (nada fica "preso" no último player fechado).
     private func handleAppLifecycleChange() {
         guard timer != nil else { refresh(); return }
         if runningPlayers().isEmpty {
@@ -155,16 +125,10 @@ final class PlayerBridge: ObservableObject {
 
     private func isPlaying(_ player: Player) -> Bool {
         guard let app = app(for: player), let raw = app.value(forKey: "playerState") as? NSNumber else { return false }
-        // KVC `playerState` (Music/Spotify expõem os dois; enum `kPSP` = "playing" no .sdef).
         let playing: UInt32 = 0x6B50_5350
         return raw.uint32Value == playing
     }
 
-    /// Escolha pura, sem IO: recebe o que já foi lido (players rodando, título
-    /// atual do card, título e estado playing de cada um) e devolve qual
-    /// controlar. Ordem: título bate com a faixa atual do card → vence; senão
-    /// o que está tocando (`playerState` == playing) → vence; senão Music
-    /// (fallback estável quando nada desempata, ex.: os dois pausados).
     nonisolated static func choosePlayer(
         running: [Player],
         nowPlayingTitle: String?,
@@ -192,9 +156,6 @@ final class PlayerBridge: ObservableObject {
         return Self.choosePlayer(running: running, nowPlayingTitle: preferredTitle, titles: titles, playing: playing)
     }
 
-    /// Lê o estado atual do player detectado — chamado a cada tick do timer
-    /// (e uma vez na hora de ligar o polling). `nowPlayingTitle` vem do
-    /// `MediaRemoteService` já exibido no card, pra desempatar Music×Spotify.
     func refresh(nowPlayingTitle: String? = nil) {
         guard let player = detectPlayer(preferredTitle: nowPlayingTitle), let app = app(for: player) else {
             isAvailable = false
@@ -217,7 +178,6 @@ final class PlayerBridge: ObservableObject {
         case .spotify:
             let shuffle = (app.value(forKey: "shuffling") as? Bool) ?? false
             let repeating = (app.value(forKey: "repeating") as? Bool) ?? false
-            // sem "one" na API do Spotify — nunca oferecer symbol .one aqui.
             state = PlayerState(shuffle: shuffle, repeatMode: repeating ? .all : .off, favorite: nil, supportsFavorite: false)
         }
     }
@@ -260,9 +220,6 @@ final class PlayerBridge: ObservableObject {
         refresh(nowPlayingTitle: nowPlayingTitleProvider?())
     }
 
-    // Enum `song repeat` do Music.sdef (MusicERpt): off='kRpO' one='kRp1' all='kAll'.
-    // Sem header gerado (regra do ciclo) — ScriptingBridge entrega o FourCharCode
-    // cru via KVC; comparado aqui contra as constantes públicas do próprio .sdef.
     private static let musicRptOff: UInt32 = 0x6B52_704F
     private static let musicRptOne: UInt32 = 0x6B52_7031
     private static let musicRptAll: UInt32 = 0x6B41_6C6C

@@ -29,8 +29,6 @@ struct HotKeyCombo: Equatable {
     }
 }
 
-/// Uma tabela de conflito é útil pra planejar registros antes de mexer no
-/// Carbon de verdade — pura, sem side effect, fácil de testar.
 enum HotKeyRegistryPlanner {
     static func conflicts(in pairs: [(id: UInt32, combo: HotKeyCombo)]) -> [HotKeyCombo] {
         var counts: [HotKeyCombo: Int] = [:]
@@ -41,8 +39,6 @@ enum HotKeyRegistryPlanner {
 
 extension HotKeyCombo: Hashable {}
 
-/// Hotkeys globais via Carbon — não exige Acessibilidade. UM handler Carbon
-/// só, ids despachados pro handler registrado (Ring = 1, droplets = 100+).
 @MainActor
 final class HotKeyCenter {
     static let shared = HotKeyCenter()
@@ -50,7 +46,7 @@ final class HotKeyCenter {
     private var refs: [UInt32: EventHotKeyRef] = [:]
     private var handlers: [UInt32: () -> Void] = [:]
     private var eventHandlerRef: EventHandlerRef?
-    private static let signature: OSType = 0x53_50_59_4B  // 'SPYK'
+    private static let signature: OSType = 0x53_50_59_4B
 
     private init() {}
 

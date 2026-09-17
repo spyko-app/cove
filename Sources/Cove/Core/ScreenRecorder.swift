@@ -2,9 +2,6 @@ import AppKit
 import Foundation
 import ScreenCaptureKit
 
-/// Gravação de tela via ScreenCaptureKit — `SCStream` + `SCRecordingOutput` (macOS 15).
-/// TCC de Gravação de Tela é pedido pelo sistema na primeira chamada a
-/// `SCShareableContent`, nunca no boot do app — construir o serviço é inofensivo.
 @MainActor
 final class ScreenRecorder: NSObject, ObservableObject {
     @Published private(set) var isRecording = false
@@ -18,12 +15,10 @@ final class ScreenRecorder: NSObject, ObservableObject {
     private var startRequested = false
     private var finishContinuation: CheckedContinuation<Void, Never>?
 
-    /// Um arquivo de gravação só é válido se existe e tem conteúdo — puro e testável.
     static func isValidRecording(sizeBytes: Int?, exists: Bool) -> Bool {
         exists && (sizeBytes ?? 0) > 0
     }
 
-    /// Nome do arquivo de saída — `stamp` já formatado, puro e testável.
     static func outputURL(stamp: String) -> URL {
         AppSupport.file("recordings").appendingPathComponent("Gravação \(stamp).mp4")
     }
@@ -34,7 +29,6 @@ final class ScreenRecorder: NSObject, ObservableObject {
         return f.string(from: date)
     }
 
-    /// `mm:ss` do tempo decorrido — puro e testável.
     static func formatElapsed(_ seconds: Int) -> String {
         String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
@@ -61,7 +55,6 @@ final class ScreenRecorder: NSObject, ObservableObject {
             return
         }
 
-        // nunca captura a própria ilha/painéis — exclui pelo windowID das janelas do app
         let ownWindowIDs = Set(NSApp.windows.map { CGWindowID($0.windowNumber) })
         let ownWindows = content.windows.filter { ownWindowIDs.contains($0.windowID) }
         let filter = SCContentFilter(display: scDisplay, excludingWindows: ownWindows)
@@ -153,8 +146,6 @@ final class ScreenRecorder: NSObject, ObservableObject {
         }
     }
 
-    /// Chamado no shutdown do app (Droppy #2/#40): para a captura de forma
-    /// síncrona e best-effort, sem deixar o processo sair com a sessão viva.
     func stopSync() {
         startRequested = false
         guard isRecording, let stream else { return }

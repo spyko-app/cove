@@ -5,7 +5,7 @@ struct ClipEntry: Identifiable, Codable, Equatable {
     enum Kind: String, Codable { case text, url, image, file }
     let id: UUID
     let kind: Kind
-    let text: String          // imagem: "Imagem 640×480"; arquivo: caminho
+    let text: String
     let date: Date
     var pinned: Bool = false
     var label: String?
@@ -35,7 +35,6 @@ struct ClipEntry: Identifiable, Codable, Equatable {
     }
 }
 
-/// Histórico do clipboard (poll de changeCount, 0,5s). Senhas (org.nspasteboard.ConcealedType) são ignoradas.
 @MainActor
 final class ClipboardStore: ObservableObject {
     @Published private(set) var entries: [ClipEntry] = []
@@ -61,13 +60,10 @@ final class ClipboardStore: ObservableObject {
 
     deinit { pruneTimer?.invalidate() }
 
-    /// Puro — limite de tamanho pra imagem no clipboard (#24). Sem tamanho
-    /// conhecido (0) ou acima do limite: ignora.
     func shouldIngestImage(bytes: Int) -> Bool {
         bytes > 0 && bytes <= maxImageBytes
     }
 
-    /// Puro — detecta `#RGB`/`#RRGGBB`/`#RRGGBBAA` (case-insensitive, com espaço em volta) e devolve normalizado.
     func hexColor(in text: String) -> String? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.hasPrefix("#") else { return nil }
@@ -76,8 +72,6 @@ final class ClipboardStore: ObservableObject {
         return "#" + hex.uppercased()
     }
 
-    /// Duplicata de entrada fixada: não insere de novo, só atualiza a data e
-    /// sobe pro topo do grupo de fixados (mantém `pinned`/`label`).
     func ingest(text: String?, kind: ClipEntry.Kind, date: Date = Date()) {
         guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return }
         if let i = entries.firstIndex(where: { $0.text == text && $0.kind == kind && $0.pinned }) {
@@ -94,8 +88,6 @@ final class ClipboardStore: ObservableObject {
         save()
     }
 
-    /// Remove excedente além de `limit` (0 = ilimitado), sempre a partir dos
-    /// não-fixados mais antigos — fixados nunca contam pro limite.
     private func trimToLimit() {
         guard limit > 0 else { return }
         let unpinnedCount = entries.filter { !$0.pinned }.count
@@ -121,7 +113,6 @@ final class ClipboardStore: ObservableObject {
         save()
     }
 
-    /// Rótulo customizado da entrada. String vazia limpa o rótulo.
     func rename(_ id: UUID, label: String) {
         guard let i = entries.firstIndex(where: { $0.id == id }) else { return }
         let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -129,7 +120,6 @@ final class ClipboardStore: ObservableObject {
         save()
     }
 
-    /// Remove entradas não-fixadas mais antigas que `retentionDays` (0 = nunca poda).
     func prune(now: Date = Date()) {
         guard retentionDays > 0 else { return }
         let cutoff = now.addingTimeInterval(-Double(retentionDays) * 86_400)
@@ -186,8 +176,6 @@ final class ClipboardStore: ObservableObject {
     }
     func stopWatching() { timer?.invalidate(); timer = nil }
 
-    /// Chamado logo após uma escrita própria no pasteboard geral (paste-at-cursor,
-    /// `copy()`) pra que o próximo poll não a reingira como se fosse externa.
     func acknowledgeOwnWrite() {
         lastCount = NSPasteboard.general.changeCount
     }
@@ -196,8 +184,6 @@ final class ClipboardStore: ObservableObject {
         ingestIfChanged(pasteboard: NSPasteboard.general)
     }
 
-    /// Núcleo testável do poll: ingere só se `pasteboard.changeCount` mudou
-    /// desde a última leitura conhecida (própria ou externa).
     func ingestIfChanged(pasteboard pb: NSPasteboard) {
         guard pb.changeCount != lastCount else { return }
         lastCount = pb.changeCount
@@ -210,14 +196,10 @@ final class ClipboardStore: ObservableObject {
             ingest(text: s, kind: s.hasPrefix("http") && !s.contains(" ") ? .url : .text)
             return
         }
-        // imagem: leitura do pasteboard fica na main thread (AppKit exige);
-        // decode/gravação em PNG rodam fora dela, e nunca acima do limite (#24)
         guard let data = pb.data(forType: .tiff) ?? pb.data(forType: .png), shouldIngestImage(bytes: data.count) else { return }
         Task.detached { [weak self] in await self?.ingestImageData(data) }
     }
 
-    /// Decodifica e grava o PNG de `data` em `clipsDir`; só cria a entrada se a gravação der certo.
-    /// `nonisolated` pra rodar fora da main actor (chamado de `Task.detached`), testável direto.
     nonisolated func ingestImageData(_ data: Data) async {
         guard let pngData = Self.pngRepresentation(from: data) else { return }
         let id = UUID()
@@ -281,7 +263,6 @@ final class ClipboardStore: ObservableObject {
         return rep.representation(using: .png, properties: [:])
     }
 
-    /// Miniatura 56×40 via `QLThumbnailGenerator` (roda fora da main actor).
     private nonisolated static func thumbnailPNG(for path: URL) async -> Data? {
         let request = QLThumbnailGenerator.Request(fileAt: path, size: CGSize(width: 56, height: 40), scale: 2, representationTypes: .thumbnail)
         return await withCheckedContinuation { continuation in
