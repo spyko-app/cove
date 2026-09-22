@@ -1061,17 +1061,26 @@ struct FloatingHUDPill: View {
         let row = ExpandedHUDRow(activity: activity)
             .padding(.horizontal, 14)
             .frame(width: 250, height: 36)
+        #if compiler(>=6.2)
         if #available(macOS 26, *) {
             GlassEffectContainer {
                 row.glassEffect(.regular.tint(.black.opacity(0.25)), in: Capsule(style: .continuous))
             }
             .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
         } else {
-            row
-                .background(.ultraThinMaterial, in: Capsule(style: .continuous))
-                .overlay(Capsule(style: .continuous).stroke(.white.opacity(0.15), lineWidth: 0.5))
-                .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
+            Self.fallback(row)
         }
+        #else
+        Self.fallback(row)
+        #endif
+    }
+
+    @ViewBuilder
+    private static func fallback(_ row: some View) -> some View {
+        row
+            .background(.ultraThinMaterial, in: Capsule(style: .continuous))
+            .overlay(Capsule(style: .continuous).stroke(.white.opacity(0.15), lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
     }
 }
 

@@ -27,6 +27,7 @@ private struct CoveCardBackground: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     func body(content: Content) -> some View {
+        #if compiler(>=6.2)
         if #available(macOS 26, *), CardStyle.usesGlass(available: true, enabled: dynamicGlass, reduceTransparency: reduceTransparency) {
             let tint = min(1, max(0, dynamicGlassTint))
             content.glassEffect(
@@ -34,10 +35,17 @@ private struct CoveCardBackground: ViewModifier {
                 in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .modifier(LayerSeparation(cornerRadius: cornerRadius))
         } else {
-            content
-                .background(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(.white.opacity(0.08)))
+            fallback(content)
         }
+        #else
+        fallback(content)
+        #endif
+    }
+
+    private func fallback(_ content: Content) -> some View {
+        content
+            .background(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(.white.opacity(0.08)))
     }
 }
 

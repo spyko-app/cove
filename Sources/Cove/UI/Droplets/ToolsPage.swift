@@ -22,11 +22,15 @@ struct ToolsPage: View {
         VStack(spacing: 8) {
             Color.clear.frame(height: notchTop)
             Group {
+                #if compiler(>=6.2)
                 if #available(macOS 26, *) {
                     GlassEffectContainer(spacing: 4) { grid }
                 } else {
                     grid
                 }
+                #else
+                grid
+                #endif
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 4)

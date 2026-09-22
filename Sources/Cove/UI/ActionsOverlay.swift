@@ -15,11 +15,15 @@ struct ActionsOverlay: View {
             Color.clear.frame(height: notchTop)
             header
             Group {
+                #if compiler(>=6.2)
                 if #available(macOS 26, *) {
                     GlassEffectContainer { grid }
                 } else {
                     grid
                 }
+                #else
+                grid
+                #endif
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
