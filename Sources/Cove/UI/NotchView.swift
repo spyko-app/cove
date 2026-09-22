@@ -568,17 +568,24 @@ private struct EqualizerGlyph: View {
     let tint: Color
     let animated: Bool
 
+    private static let bases: [CGFloat] = [11, 7, 3, 7, 11]
+
+    private func barHeight(index i: Int, time t: TimeInterval) -> CGFloat {
+        guard animated else { return 2.5 }
+        let base: CGFloat = Self.bases[i]
+        let phase: Double = t * (5.0 + Double(i) * 1.7) + Double(i)
+        let wobble: CGFloat = CGFloat(sin(phase)) * 3.0
+        return max(2.5, base + wobble)
+    }
+
     var body: some View {
         TimelineView(.animation(minimumInterval: 0.12, paused: !animated)) { ctx in
-            let t = ctx.date.timeIntervalSinceReferenceDate
+            let t: TimeInterval = ctx.date.timeIntervalSinceReferenceDate
             HStack(spacing: 2.5) {
                 ForEach(0..<5, id: \.self) { i in
-                    let base: CGFloat = animated ? [11, 7, 3, 7, 11][i] : 2.5
-                    let wobble: CGFloat = animated
-                        ? CGFloat(sin(t * (5 + Double(i) * 1.7) + Double(i))) * 3 : 0
                     Capsule()
                         .fill(tint)
-                        .frame(width: 2.5, height: max(2.5, base + wobble))
+                        .frame(width: 2.5, height: barHeight(index: i, time: t))
                 }
             }
             .animation(.spring(duration: 0.22, bounce: 0.35), value: animated)
