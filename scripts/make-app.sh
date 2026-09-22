@@ -3,8 +3,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 RELEASE_FLAG=0
+UNIVERSAL_FLAG=0
 for arg in "$@"; do
   [ "$arg" = "--release" ] && RELEASE_FLAG=1
+  [ "$arg" = "--universal" ] && UNIVERSAL_FLAG=1
 done
 
 VERSION_FILE="VERSION"
@@ -38,17 +40,37 @@ if [ "$RELEASE_FLAG" = "1" ]; then
   fi
 fi
 
-swift build -c release
-BIN=".build/release/Cove"
+ADAPTER_ARCH_FLAGS=()
+if [ "$UNIVERSAL_FLAG" = "1" ]; then
+  # `swift build --arch arm64 --arch x86_64` routes through XCBuild, which fails to
+  # resolve SwiftTerm's build-tool plugin ("missing target ... SwiftTermBuildInfoPlugin").
+  # Building one arch at a time works, so do that and lipo the results together.
+  for a in x86_64 arm64; do
+    echo "building $a..."
+    swift build -c release --arch "$a"
+  done
+  BIN="build/Cove-universal"
+  mkdir -p build
+  lipo -create -output "$BIN" \
+    ".build/x86_64-apple-macosx/release/Cove" \
+    ".build/arm64-apple-macosx/release/Cove"
+  # Sparkle ships as an xcframework slice that is already arm64+x86_64.
+  SPARKLE_SRC=".build/arm64-apple-macosx/release/Sparkle.framework"
+  ADAPTER_ARCH_FLAGS=(-arch x86_64 -arch arm64)
+else
+  swift build -c release
+  BIN=".build/release/Cove"
+  SPARKLE_SRC=".build/release/Sparkle.framework"
+fi
 
 mkdir -p build
 TMP_DIR=$(mktemp -d "build/.tmp.XXXXXX")
 trap 'rm -rf "$TMP_DIR"' EXIT
 TMP_APP="$TMP_DIR/Cove.app"
 mkdir -p "$TMP_APP/Contents/MacOS" "$TMP_APP/Contents/Resources" "$TMP_APP/Contents/Frameworks"
-cp "$BIN" "$TMP_APP/Contents/MacOS/"
+cp "$BIN" "$TMP_APP/Contents/MacOS/Cove"
 
-SPARKLE_FRAMEWORK=".build/release/Sparkle.framework"
+SPARKLE_FRAMEWORK="$SPARKLE_SRC"
 if [ ! -d "$SPARKLE_FRAMEWORK" ]; then
   echo "\033[31merro: $SPARKLE_FRAMEWORK não existe nos produtos do build — o app ficaria sem Sparkle.framework (falha silenciosa depois com 'Library not loaded')\033[0m" >&2
   exit 1
@@ -56,12 +78,16 @@ fi
 cp -R "$SPARKLE_FRAMEWORK" "$TMP_APP/Contents/Frameworks/"
 install_name_tool -add_rpath @executable_path/../Frameworks "$TMP_APP/Contents/MacOS/Cove" 2>/dev/null || true
 
-clang -dynamiclib -fobjc-arc -framework Foundation -o "$TMP_APP/Contents/Resources/mradapter.dylib" adapter/mradapter.m
+clang -dynamiclib -fobjc-arc ${ADAPTER_ARCH_FLAGS[@]+"${ADAPTER_ARCH_FLAGS[@]}"} \
+  -framework Foundation -o "$TMP_APP/Contents/Resources/mradapter.dylib" adapter/mradapter.m
 cp adapter/adapter.pl "$TMP_APP/Contents/Resources/"
 python3 scripts/make-sounds.py >/dev/null
 cp -R Resources/Sounds "$TMP_APP/Contents/Resources/Sounds"
 if [ ! -f build/AppIcon.icns ]; then
-  swift scripts/make-icon.swift build/AppIcon.iconset >/dev/null && iconutil -c icns build/AppIcon.iconset -o build/AppIcon.icns
+  # Compile instead of interpreting: `swift file.swift <args>` passes driver flags
+  # (e.g. -frontend) as argv[1] on some toolchains, so the output path is lost.
+  swiftc -O scripts/make-icon.swift -o build/make-icon
+  ./build/make-icon build/AppIcon.iconset >/dev/null && iconutil -c icns build/AppIcon.iconset -o build/AppIcon.icns
 fi
 cp build/AppIcon.icns "$TMP_APP/Contents/Resources/AppIcon.icns"
 
@@ -128,4 +154,4 @@ codesign -f -s "$SIGN_ID" ${CODESIGN_EXTRA_ARGS[@]+"${CODESIGN_EXTRA_ARGS[@]}"} 
 APP=build/Cove.app
 rm -rf "$APP"
 mv "$TMP_APP" "$APP"
-echo "pronto: $APP (v$VERSION)"
+echo "pronto: $APP (v$VERSION, $(lipo -archs "$APP/Contents/MacOS/Cove"))"
