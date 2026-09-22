@@ -61,7 +61,10 @@ cp adapter/adapter.pl "$TMP_APP/Contents/Resources/"
 python3 scripts/make-sounds.py >/dev/null
 cp -R Resources/Sounds "$TMP_APP/Contents/Resources/Sounds"
 if [ ! -f build/AppIcon.icns ]; then
-  swift scripts/make-icon.swift build/AppIcon.iconset >/dev/null && iconutil -c icns build/AppIcon.iconset -o build/AppIcon.icns
+  # Compile instead of interpreting: `swift file.swift <args>` passes driver flags
+  # (e.g. -frontend) as argv[1] on some toolchains, so the output path is lost.
+  swiftc -O scripts/make-icon.swift -o build/make-icon
+  ./build/make-icon build/AppIcon.iconset >/dev/null && iconutil -c icns build/AppIcon.iconset -o build/AppIcon.icns
 fi
 cp build/AppIcon.icns "$TMP_APP/Contents/Resources/AppIcon.icns"
 
